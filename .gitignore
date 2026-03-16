@@ -1,5 +1,6 @@
 .env
 .ig_config.json
+.provider_keys.json
 smm.db
 *.pyc
 __pycache__/

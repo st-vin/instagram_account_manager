@@ -8,29 +8,17 @@ The engine logic never changes; only the profile data does.
 """
 import json
 import re
-from cerebras.cloud.sdk import Cerebras
 import config
 from models.niche_profile import NicheProfile, get_default_profile
 
-_client = None
+def _call(prompt: str, max_tokens: int = 1200, provider: str | None = None, model: str | None = None) -> str:
+    """
+    Route this AI call to whichever provider is currently active.
+    provider and model can be overridden per-call if needed.
+    """
+    from services.provider_router import call_ai
 
-
-def get_client() -> Cerebras:
-    global _client
-    if _client is None:
-        if not config.CEREBRAS_API_KEY:
-            raise RuntimeError("CEREBRAS_API_KEY not set in environment.")
-        _client = Cerebras(api_key=config.CEREBRAS_API_KEY)
-    return _client
-
-
-def _call(prompt: str, max_tokens: int = 1200) -> str:
-    resp = get_client().chat.completions.create(
-        model=config.CEREBRAS_MODEL,
-        messages=[{"role": "user", "content": prompt}],
-        max_tokens=max_tokens,
-    )
-    return resp.choices[0].message.content.strip()
+    return call_ai(prompt=prompt, max_tokens=max_tokens, provider=provider, model=model)
 
 
 def _parse_json(raw: str) -> dict | list:

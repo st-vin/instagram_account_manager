@@ -22,7 +22,7 @@ function navigate(page) {
     calendar:    loadCalendar,
     accounts:    loadAccounts,
     niches:      loadNiches,
-    settings:    loadChecklist,
+    settings:    () => { loadChecklist(); loadProviderSettings(); },
   };
   if (loaders[page]) loaders[page]();
 }
@@ -650,10 +650,142 @@ async function loadChecklist() {
     </div>`).join('');
 }
 
+/* ── AI Provider & Model selector ───────────────────────── */
+
+let _providers = [];
+let _selectedProv = null;
+let _selectedModel = null;
+
+async function loadProviderSettings() {
+  const cards = el('provider-cards');
+  if (!cards) return;
+  try {
+    const data = await API.get('/ai/providers');
+    _providers = data.providers || [];
+    const active = data.active || {};
+    _selectedProv  = active.provider || 'cerebras';
+    _selectedModel = active.model || null;
+
+    const label = el('active-provider-label');
+    if (label) label.textContent = `AI: ${active.label || active.provider || '—'}`;
+
+    renderProviderCards();
+    // Pre-select to populate dropdown on load
+    selectProvider(_selectedProv, { preserveModel: true });
+  } catch (e) {
+    html('provider-cards', `<div class="error-msg">Could not load providers: ${e.message}</div>`);
+  }
+}
+
+function renderProviderCards() {
+  const container = el('provider-cards');
+  if (!container) return;
+  if (!_providers.length) { container.innerHTML = ''; return; }
+
+  container.innerHTML = _providers.map(p => `
+    <div
+      onclick="selectProvider('${p.id}')"
+      style="
+        background: var(--color-background-primary);
+        border: ${p.id === _selectedProv ? '2px solid var(--accent)' : '0.5px solid var(--color-border-secondary)'};
+        border-radius: var(--border-radius-lg);
+        padding: 12px 14px;
+        cursor: pointer;
+        transition: border-color .12s;
+      ">
+      <div style="font-size:13px;font-weight:500;margin-bottom:3px">${p.label}</div>
+      <div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:6px">${(p.models||[]).length} model${(p.models||[]).length>1?'s':''} available</div>
+      ${p.free_tier
+        ? '<span style="font-size:10px;background:var(--color-background-success);color:var(--color-text-success);padding:2px 8px;border-radius:8px;font-weight:500">Free tier</span>'
+        : `<a href="${p.key_link}" target="_blank" style="font-size:10px;color:var(--color-text-info)">Get API key →</a>`
+      }
+    </div>
+  `).join('');
+}
+
+function selectProvider(providerId, opts = {}) {
+  _selectedProv = providerId;
+  if (!opts.preserveModel) _selectedModel = null;
+  renderProviderCards();
+
+  const prov = _providers.find(p => p.id === providerId);
+  if (!prov) return;
+
+  const sel = el('model-select');
+  if (sel) {
+    sel.innerHTML = (prov.models || []).map(m => {
+      const selected = (m.id === (_selectedModel || '')) ? 'selected' : '';
+      return `<option value="${m.id}" ${selected}>${m.label}</option>`;
+    }).join('');
+    _selectedModel = sel.value || _selectedModel;
+  }
+
+  const keyInput = el('provider-api-key');
+  if (keyInput) {
+    keyInput.placeholder = prov.free_tier
+      ? 'No API key needed for this provider'
+      : `Paste your ${prov.label} API key here`;
+    keyInput.value = '';
+  }
+
+  const row = el('model-selector-row');
+  if (row) row.style.display = 'grid';
+}
+
+function onModelChange() {
+  _selectedModel = val('model-select');
+}
+
+async function testProvider() {
+  setLoading('provider-result', `Testing ${_selectedProv} connection…`);
+  try {
+    const d = await API.post('/ai/provider/test', {
+      provider: _selectedProv,
+      model:    _selectedModel || val('model-select'),
+    });
+    el('provider-result').innerHTML = d.success
+      ? `<div class="success-msg">Connected to ${_selectedProv}! Response: "${d.response}"</div>`
+      : `<div class="error-msg">Connection failed: ${d.error}</div>`;
+  } catch (e) {
+    el('provider-result').innerHTML = `<div class="error-msg">${e.message}</div>`;
+  }
+  show('provider-result');
+}
+
+async function saveProvider() {
+  const box = el('provider-result');
+  const apiKey = val('provider-api-key');
+  const model  = val('model-select') || _selectedModel;
+
+  if (apiKey) {
+    try {
+      await API.post('/auth/save-api-key', { provider: _selectedProv, api_key: apiKey });
+    } catch (e) {
+      box.innerHTML = `<div class="error-msg">Failed to save API key: ${e.message}</div>`;
+      show('provider-result');
+      return;
+    }
+  }
+
+  try {
+    await API.post('/ai/provider', { provider: _selectedProv, model });
+    box.innerHTML = `<div class="success-msg">Switched to ${_selectedProv} — ${model}. All generation will now use this provider.</div>`;
+    show('provider-result');
+
+    const prov = _providers.find(p => p.id === _selectedProv);
+    const label = el('active-provider-label');
+    if (label) label.textContent = `AI: ${prov?.label || _selectedProv}`;
+  } catch (e) {
+    box.innerHTML = `<div class="error-msg">${e.message}</div>`;
+    show('provider-result');
+  }
+}
+
 /* ── Init ───────────────────────────────────────────────── */
 (async function init() {
   checkStatus();
   await loadActiveAccount();
   await populateAccountNicheSelect();
+  await loadProviderSettings();
   loadOverview();
 })();

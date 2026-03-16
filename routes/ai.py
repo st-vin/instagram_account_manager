@@ -3,6 +3,7 @@ from flask import Blueprint, request, jsonify
 from services import cerebras_service as cs
 from services import flow_service as fs
 from models.accounts import get_active_account
+import config
 
 ai_bp = Blueprint("ai", __name__)
 
@@ -147,3 +148,63 @@ def generate_report():
         ))
     except Exception as e:
         return _err(str(e), 500)
+
+
+# ── AI provider configuration ───────────────────────────────────────────────
+from services.provider_router import get_providers_list, get_active_provider_info, PROVIDERS
+
+
+@ai_bp.route("/ai/providers", methods=["GET"])
+def list_providers():
+    """Returns all available providers and models for the dashboard dropdowns."""
+    return jsonify(
+        {
+            "providers": get_providers_list(),
+            "active": get_active_provider_info(),
+        }
+    )
+
+
+@ai_bp.route("/ai/provider", methods=["POST"])
+def set_provider():
+    """
+    Switch the active AI provider and/or model for this runtime.
+    Note: This updates in-memory config (persists across restarts only via .env or saved keys file).
+    """
+    d = request.json or {}
+    provider = (d.get("provider") or "").lower().strip()
+    model = (d.get("model") or "").strip()
+
+    if provider and provider not in PROVIDERS:
+        return _err(f"Unknown provider: {provider}. Valid: {', '.join(PROVIDERS.keys())}")
+
+    if provider:
+        config.AI_PROVIDER = provider
+    if model:
+        key = f"AI_MODEL_{(provider or config.AI_PROVIDER).upper()}"
+        setattr(config, key, model)
+
+    active_provider = config.AI_PROVIDER or "cerebras"
+    active_model = getattr(config, f"AI_MODEL_{active_provider.upper()}", "")
+    return jsonify({"saved": True, "provider": active_provider, "model": active_model})
+
+
+@ai_bp.route("/ai/provider/test", methods=["POST"])
+def test_provider():
+    """Send a tiny test prompt to verify provider + key + model work."""
+    d = request.json or {}
+    provider = (d.get("provider") or config.AI_PROVIDER or "cerebras").lower().strip()
+    model = (d.get("model") or "").strip() or None
+
+    from services.provider_router import call_ai
+
+    try:
+        result = call_ai(
+            prompt="Reply with exactly the word: CONNECTED",
+            max_tokens=10,
+            provider=provider,
+            model=model,
+        )
+        return jsonify({"success": True, "response": result, "provider": provider})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e), "provider": provider}), 400

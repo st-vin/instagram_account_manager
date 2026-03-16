@@ -7,6 +7,26 @@ load_dotenv()
 CEREBRAS_API_KEY    = os.getenv("CEREBRAS_API_KEY", "")
 CEREBRAS_MODEL      = "llama-4-scout-17b-16e-instruct"
 
+# ── Anthropic Claude ──────────────────────────────────────
+ANTHROPIC_API_KEY   = os.getenv("ANTHROPIC_API_KEY", "")
+
+# ── OpenAI ────────────────────────────────────────────────
+OPENAI_API_KEY      = os.getenv("OPENAI_API_KEY", "")
+
+# ── Google Gemini (AI Studio) ─────────────────────────────
+GEMINI_API_KEY      = os.getenv("GEMINI_API_KEY", "")
+
+# ── Active AI provider ────────────────────────────────────
+# Which provider to use for text generation.
+# Options: "cerebras" | "claude" | "openai" | "gemini"
+AI_PROVIDER         = os.getenv("AI_PROVIDER", "cerebras")
+
+# Default model per provider — overridden when user picks from dashboard
+AI_MODEL_CEREBRAS   = os.getenv("AI_MODEL_CEREBRAS", "llama-4-scout-17b-16e-instruct")
+AI_MODEL_CLAUDE     = os.getenv("AI_MODEL_CLAUDE",   "claude-sonnet-4-6")
+AI_MODEL_OPENAI     = os.getenv("AI_MODEL_OPENAI",   "gpt-4o")
+AI_MODEL_GEMINI     = os.getenv("AI_MODEL_GEMINI",   "gemini-2.5-flash")
+
 # ── Instagram Graph API ───────────────────────────────────
 IG_ACCESS_TOKEN     = os.getenv("IG_ACCESS_TOKEN", "")
 IG_USER_ID          = os.getenv("IG_USER_ID", "")
