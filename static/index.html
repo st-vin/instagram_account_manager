@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SMM Engine</title>
+<link rel="stylesheet" href="/static/css/dashboard.css">
+</head>
+<body>
+
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-mark">S</div>
+    <span class="logo-text">SMM Engine</span>
+  </div>
+
+  <!-- Account switcher -->
+  <div class="account-switcher" id="account-switcher" onclick="navigate('accounts')">
+    <div class="account-avatar" id="acc-avatar">?</div>
+    <div class="account-info">
+      <div class="account-name" id="acc-name">No account</div>
+      <div class="account-niche" id="acc-niche">Select an account</div>
+    </div>
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style="flex-shrink:0;opacity:.4"><path d="M3 5l3 3 3-3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+  </div>
+
+  <nav class="sidebar-nav">
+    <a class="nav-item active" data-page="overview"    onclick="navigate('overview')">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="1" y="1" width="6" height="6" rx="1.5" stroke="currentColor" stroke-width="1.2"/><rect x="9" y="1" width="6" height="6" rx="1.5" stroke="currentColor" stroke-width="1.2"/><rect x="1" y="9" width="6" height="6" rx="1.5" stroke="currentColor" stroke-width="1.2"/><rect x="9" y="9" width="6" height="6" rx="1.5" stroke="currentColor" stroke-width="1.2"/></svg>
+      Overview
+    </a>
+    <a class="nav-item" data-page="generate"    onclick="navigate('generate')">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 1v14M1 8h14" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+      Generate
+    </a>
+    <a class="nav-item" data-page="calendar"    onclick="navigate('calendar')">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="1" y="3" width="14" height="12" rx="2" stroke="currentColor" stroke-width="1.2"/><path d="M5 1v4M11 1v4M1 7h14" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+      Calendar
+    </a>
+    <a class="nav-item" data-page="engagement"  onclick="navigate('engagement')">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M14 10c0 1.657-2.686 3-6 3s-6-1.343-6-3V6c0 1.657 2.686 3 6 3s6-1.343 6-3v4Z" stroke="currentColor" stroke-width="1.2"/><ellipse cx="8" cy="6" rx="6" ry="3" stroke="currentColor" stroke-width="1.2"/></svg>
+      Engagement
+      <span class="badge-count" id="pending-badge" style="display:none">0</span>
+    </a>
+    <a class="nav-item" data-page="kpi"         onclick="navigate('kpi')">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M1 13L5 8l3 3 3-4 4 2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      KPI & Reports
+    </a>
+    <a class="nav-item" data-page="scheduler"   onclick="navigate('scheduler')">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.2"/><path d="M8 4.5V8l2.5 2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+      Scheduler
+    </a>
+
+    <div class="nav-divider"></div>
+
+    <a class="nav-item" data-page="accounts"    onclick="navigate('accounts')">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="5" r="3" stroke="currentColor" stroke-width="1.2"/><path d="M2 14c0-3.314 2.686-6 6-6s6 2.686 6 6" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+      Accounts
+    </a>
+    <a class="nav-item" data-page="niches"      onclick="navigate('niches')">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="1" y="1" width="14" height="14" rx="3" stroke="currentColor" stroke-width="1.2"/><path d="M5 8h6M8 5v6" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+      Niches
+    </a>
+    <a class="nav-item" data-page="settings"    onclick="navigate('settings')">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="2.5" stroke="currentColor" stroke-width="1.2"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.05 3.05l1.41 1.41M11.54 11.54l1.41 1.41M3.05 12.95l1.41-1.41M11.54 4.46l1.41-1.41" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+      Settings
+    </a>
+  </nav>
+
+  <div class="sidebar-footer">
+    <div class="connection-status">
+      <span class="status-dot" id="status-dot"></span>
+      <span id="status-label">Checking…</span>
+    </div>
+  </div>
+</aside>
+
+<main class="main-content" id="main">
+
+  <!-- OVERVIEW -->
+  <div class="page active" id="page-overview">
+    <div class="page-header">
+      <h1>Overview</h1>
+      <button class="btn-primary" onclick="syncKPI()">Sync metrics</button>
+    </div>
+    <div class="metric-grid">
+      <div class="metric-card"><div class="metric-label">Followers</div><div class="metric-value" id="m-followers">—</div><div class="metric-delta" id="m-followers-delta"></div></div>
+      <div class="metric-card"><div class="metric-label">Engagement rate</div><div class="metric-value" id="m-eng">—</div></div>
+      <div class="metric-card"><div class="metric-label">Reach (7d)</div><div class="metric-value" id="m-reach">—</div></div>
+      <div class="metric-card"><div class="metric-label">Pending comments</div><div class="metric-value" id="m-comments">—</div></div>
+    </div>
+    <div class="section-title">Recent posts</div>
+    <div class="posts-grid" id="posts-grid"><div class="loading">Loading posts…</div></div>
+  </div>
+
+  <!-- GENERATE -->
+  <div class="page" id="page-generate">
+    <div class="page-header">
+      <h1>Generate content</h1>
+      <div class="niche-context-pill" id="gen-niche-pill"></div>
+    </div>
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab(this,'tab-caption')">Caption</button>
+      <button class="tab" onclick="switchTab(this,'tab-reel')">Reel script</button>
+      <button class="tab" onclick="switchTab(this,'tab-carousel')">Carousel</button>
+      <button class="tab" onclick="switchTab(this,'tab-dm')">Collab DM</button>
+    </div>
+
+    <div class="tab-panel active" id="tab-caption">
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Content archetype</label>
+          <select id="cap-archetype" onchange="updateArchetypeExamples('cap-archetype','cap-keyword')"></select>
+        </div>
+        <div class="form-group">
+          <label>Content pillar</label>
+          <select id="cap-pillar"></select>
+        </div>
+        <div class="form-group full">
+          <label>Specific topic / keyword</label>
+          <input id="cap-keyword" type="text" placeholder="Select an archetype above for suggestions…">
+        </div>
+        <div class="form-group">
+          <label>Account type</label>
+          <select id="cap-actype"><option value="B">B — Existing</option><option value="A">A — Brand new</option></select>
+        </div>
+      </div>
+      <button class="btn-primary" onclick="generateCaption()">Generate caption</button>
+      <div class="result-box" id="cap-result" style="display:none"></div>
+    </div>
+
+    <div class="tab-panel" id="tab-reel">
+      <div class="form-grid">
+        <div class="form-group full"><label>Topic</label><input id="reel-topic" type="text" placeholder="e.g. 5 affordable spots in Nairobi"></div>
+        <div class="form-group"><label>Duration (seconds)</label><input id="reel-dur" type="number" value="45" min="15" max="90"></div>
+        <div class="form-group">
+          <label>Filming style</label>
+          <select id="reel-style"><option value="talking-to-camera">Talking to camera</option><option value="b-roll with voiceover">B-roll + voiceover</option><option value="text on screen only">Text on screen</option></select>
+        </div>
+        <div class="form-group">
+          <label>Content archetype</label>
+          <select id="reel-archetype"></select>
+        </div>
+      </div>
+      <button class="btn-primary" onclick="generateReelScript()">Generate script</button>
+      <div class="result-box" id="reel-result" style="display:none"></div>
+    </div>
+
+    <div class="tab-panel" id="tab-carousel">
+      <div class="form-grid">
+        <div class="form-group full"><label>Topic</label><input id="car-topic" type="text" placeholder="e.g. 5 easy weeknight meals"></div>
+        <div class="form-group">
+          <label>Content archetype</label>
+          <select id="car-archetype"></select>
+        </div>
+        <div class="form-group">
+          <label>CTA goal</label>
+          <select id="car-cta"><option value="follow">Follow</option><option value="save">Save</option><option value="comment">Comment</option><option value="dm">DM</option></select>
+        </div>
+        <div class="form-group">
+          <label>Visual style</label>
+          <select id="car-style"><option value="bold-graphic">Bold & graphic</option><option value="clean-minimal">Clean minimal</option><option value="personal-editorial">Personal editorial</option></select>
+        </div>
+      </div>
+      <button class="btn-primary" onclick="generateCarousel()">Generate carousel</button>
+      <div class="result-box" id="car-result" style="display:none"></div>
+    </div>
+
+    <div class="tab-panel" id="tab-dm">
+      <div class="form-grid">
+        <div class="form-group"><label>Target handle</label><input id="dm-handle" type="text" placeholder="@handle"></div>
+        <div class="form-group"><label>Their niche</label><input id="dm-niche" type="text" placeholder="e.g. Nairobi street food"></div>
+        <div class="form-group full"><label>Specific post you admire</label><input id="dm-post" type="text" placeholder="Their most recent viral post or series"></div>
+        <div class="form-group full"><label>Your collab idea</label><input id="dm-idea" type="text" placeholder="Describe the specific collab concept"></div>
+        <div class="form-group">
+          <label>Strategy</label>
+          <select id="dm-strategy"><option value="equal-swap">Equal swap</option><option value="feature-first">Feature them first</option><option value="direct">Direct pitch</option></select>
+        </div>
+      </div>
+      <button class="btn-primary" onclick="generateDM()">Generate DM</button>
+      <div class="result-box" id="dm-result" style="display:none"></div>
+    </div>
+  </div>
+
+  <!-- CALENDAR -->
+  <div class="page" id="page-calendar">
+    <div class="page-header">
+      <h1>Content calendar</h1>
+      <button class="btn-primary" onclick="openModal('cal-modal')">Generate month</button>
+    </div>
+    <div id="calendar-grid"><div class="loading">Loading calendar…</div></div>
+
+    <div class="modal-backdrop" id="cal-modal" style="display:none">
+      <div class="modal">
+        <div class="modal-header"><h2>Generate calendar</h2><button class="modal-close" onclick="closeModal('cal-modal')">×</button></div>
+        <div class="form-grid">
+          <div class="form-group"><label>Month (YYYY-MM)</label><input id="cal-month" type="text" placeholder="2026-04"></div>
+          <div class="form-group"><label>Posts per week</label><input id="cal-freq" type="number" value="3" min="2" max="7"></div>
+          <div class="form-group full"><label>Pillars (comma-separated)</label><input id="cal-pillars" type="text" placeholder="Will use account defaults if blank"></div>
+          <div class="form-group full"><label>Posting days (comma-separated)</label><input id="cal-days" type="text" placeholder="Will use account defaults if blank"></div>
+          <div class="form-group"><label>Account type</label><select id="cal-actype"><option value="B">B — Existing</option><option value="A">A — Brand new</option></select></div>
+        </div>
+        <button class="btn-primary" onclick="generateCalendar()">Generate</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ENGAGEMENT -->
+  <div class="page" id="page-engagement">
+    <div class="page-header">
+      <h1>Engagement monitor</h1>
+      <button class="btn-secondary" onclick="loadComments()">Refresh</button>
+    </div>
+    <div id="comments-list"><div class="loading">Loading comments…</div></div>
+  </div>
+
+  <!-- KPI -->
+  <div class="page" id="page-kpi">
+    <div class="page-header">
+      <h1>KPI & Reports</h1>
+      <button class="btn-primary" onclick="generateReport()">Generate report</button>
+    </div>
+    <div class="metric-grid" id="kpi-summary"></div>
+    <div class="section-title" style="margin-top:24px">Weekly trend</div>
+    <div id="kpi-trend"><div class="loading">Loading KPI data…</div></div>
+    <div class="result-box" id="report-result" style="display:none;margin-top:24px"></div>
+  </div>
+
+  <!-- SCHEDULER -->
+  <div class="page" id="page-scheduler">
+    <div class="page-header"><h1>Scheduler</h1></div>
+    <div id="jobs-list"><div class="loading">Loading jobs…</div></div>
+  </div>
+
+  <!-- ACCOUNTS -->
+  <div class="page" id="page-accounts">
+    <div class="page-header">
+      <h1>Accounts</h1>
+      <button class="btn-primary" onclick="openModal('new-account-modal')">Add account</button>
+    </div>
+    <div id="accounts-list"><div class="loading">Loading accounts…</div></div>
+
+    <div class="modal-backdrop" id="new-account-modal" style="display:none">
+      <div class="modal">
+        <div class="modal-header"><h2>Add account</h2><button class="modal-close" onclick="closeModal('new-account-modal')">×</button></div>
+        <div class="form-grid">
+          <div class="form-group"><label>Account name</label><input id="na-name" type="text" placeholder="Sara's Food Blog"></div>
+          <div class="form-group"><label>Instagram handle</label><input id="na-handle" type="text" placeholder="@sarafood"></div>
+          <div class="form-group">
+            <label>Niche profile</label>
+            <select id="na-niche"></select>
+          </div>
+          <div class="form-group">
+            <label>Account type</label>
+            <select id="na-actype"><option value="B">B — Existing account</option><option value="A">A — Brand new</option></select>
+          </div>
+          <div class="form-group full"><label>Tone</label><input id="na-tone" type="text" placeholder="warm & friendly"></div>
+          <div class="form-group full"><label>Instagram access token</label><input id="na-token" type="password" placeholder="Optional — can add later in Settings"></div>
+          <div class="form-group"><label>Instagram user ID</label><input id="na-igid" type="text" placeholder="Optional"></div>
+        </div>
+        <button class="btn-primary" onclick="createAccount()">Create account</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- NICHES -->
+  <div class="page" id="page-niches">
+    <div class="page-header">
+      <h1>Niche profiles</h1>
+      <button class="btn-primary" onclick="navigate('onboarding')">Create custom niche</button>
+    </div>
+    <div id="niches-list"><div class="loading">Loading profiles…</div></div>
+  </div>
+
+  <!-- ONBOARDING WIZARD -->
+  <div class="page" id="page-onboarding">
+    <div class="page-header"><h1>Create niche profile</h1></div>
+    <div class="settings-section">
+      <h2>Tell us about the niche</h2>
+      <p class="settings-desc">Answer these five questions. The AI will generate a complete niche profile — vocabulary mappings, content archetypes, audience context, local references, and hashtag clusters — all ready to use instantly.</p>
+      <div class="form-grid">
+        <div class="form-group full"><label>Niche name</label><input id="ob-name" type="text" placeholder="e.g. Interior Design, Kenyan Law, Sustainable Fashion"></div>
+        <div class="form-group full"><label>What does this account post about?</label><input id="ob-desc" type="text" placeholder="e.g. Home decor inspiration, DIY renovation tips, and Nairobi interior designers"></div>
+        <div class="form-group full"><label>Primary subject matter</label><input id="ob-topic" type="text" placeholder="e.g. furniture, colour palettes, room transformations"></div>
+        <div class="form-group full"><label>Who is the target audience?</label><input id="ob-audience" type="text" placeholder="e.g. Nairobi homeowners aged 25-45 who want to improve their living spaces"></div>
+        <div class="form-group"><label>City</label><input id="ob-city" type="text" placeholder="Nairobi"></div>
+        <div class="form-group"><label>Tone</label><input id="ob-tone" type="text" placeholder="warm & inspiring"></div>
+      </div>
+      <button class="btn-primary" onclick="generateNicheProfile()">Generate profile with AI</button>
+      <div class="result-box" id="ob-result" style="display:none;margin-top:16px"></div>
+      <div id="ob-save-section" style="display:none;margin-top:12px">
+        <button class="btn-secondary" onclick="saveGeneratedProfile()">Save this profile</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SETTINGS -->
+  <div class="page" id="page-settings">
+    <div class="page-header"><h1>Settings</h1></div>
+    <div class="settings-section">
+      <h2>Active account — Instagram connection</h2>
+      <p class="settings-desc">Enter the long-lived access token and user ID for the currently active account.</p>
+      <div class="form-grid">
+        <div class="form-group full"><label>Long-lived access token</label><input id="s-token" type="password" placeholder="IGQWRPa…"></div>
+        <div class="form-group"><label>Instagram user ID</label><input id="s-igid" type="text" placeholder="17841400008460056"></div>
+      </div>
+      <button class="btn-primary" onclick="saveInstagramToken()">Save & connect</button>
+      <div class="result-box" id="token-result" style="display:none;margin-top:12px"></div>
+    </div>
+    <div class="settings-section">
+      <h2>Setup checklist</h2>
+      <div class="checklist" id="setup-checklist"></div>
+    </div>
+  </div>
+
+</main>
+
+<!-- Reply modal -->
+<div class="modal-backdrop" id="reply-modal" style="display:none">
+  <div class="modal">
+    <div class="modal-header"><h2>Reply to comment</h2><button class="modal-close" onclick="closeModal('reply-modal')">×</button></div>
+    <div id="reply-comment-preview" class="comment-preview"></div>
+    <div class="form-group" style="margin-top:12px"><label>Your reply</label><textarea id="reply-text" rows="3" style="width:100%;resize:vertical"></textarea></div>
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <button class="btn-secondary" onclick="suggestReply()">AI suggest</button>
+      <button class="btn-primary" onclick="submitReply()">Post reply</button>
+    </div>
+  </div>
+</div>
+
+<script src="/static/js/api.js"></script>
+<script src="/static/js/dashboard.js"></script>
+</body>
+</html>

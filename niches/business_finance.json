@@ -1,0 +1,65 @@
+{
+  "id": "business_finance",
+  "name": "Business & Finance",
+  "sub_niche": "General",
+  "description": "Entrepreneurship, personal finance, investing, side hustles, and wealth building",
+
+  "vocabulary": {
+    "primary_entity": "strategy / deal",
+    "action_verb": "scale / close",
+    "location_type": "boardroom / market",
+    "resource_noun": "capital / network",
+    "expert_title": "entrepreneur / investor",
+    "audience_role": "founder / professional",
+    "result_noun": "closed deal / financial freedom",
+    "industry_term": "business landscape"
+  },
+
+  "archetype_overrides": {
+    "process_tutorial":    { "label": "Business how-to",         "example_topics": ["how to register a business in Kenya", "how to write a cold email that gets replies", "how to build a pitch deck"] },
+    "location_spotlight":  { "label": "Business tool review",    "example_topics": ["best accounting software for Kenyan SMEs", "top banks for business accounts", "coworking spaces worth the money"] },
+    "myth_busting":        { "label": "Business myth busting",   "example_topics": ["you need funding to start", "passion is enough to build a business", "the customer is always right"] },
+    "resource_list":       { "label": "Business resource list",  "example_topics": ["5 free tools every Kenyan founder needs", "books that changed how I think about money", "government grants available now"] },
+    "personal_journey":    { "label": "Founder story",           "example_topics": ["my first year running a business", "how I survived a failed startup", "from employee to founder"] },
+    "quick_win":           { "label": "Quick money tip",         "example_topics": ["one savings rule that changed my finances", "fastest way to validate a business idea", "money habit I wish I started at 22"] },
+    "industry_commentary": { "label": "Business landscape take", "example_topics": ["what rising interest rates mean for founders", "the Kenyan startup ecosystem in 2026", "why most SMEs fail in year 2"] },
+    "behind_scenes":       { "label": "Business day in the life","example_topics": ["my morning routine as a founder", "how I manage cash flow", "a week running a Nairobi business"] },
+    "comparison":          { "label": "Business decision breakdown", "example_topics": ["bootstrapped vs funded", "sole trader vs limited company", "freelance vs full-time"] },
+    "community_spotlight": { "label": "Founder spotlight",       "example_topics": ["this Kenyan startup is doing something impressive", "reader's business win this month", "community success story"] },
+    "hot_take":            { "label": "Business hot take",       "example_topics": ["most business advice is wrong for Kenya", "your business plan doesn't matter as much as you think", "networking is overrated"] },
+    "deep_dive":           { "label": "Finance concept explained", "example_topics": ["unit economics from scratch", "how equity and dilution work", "NSE investing for beginners"] }
+  },
+
+  "audience": {
+    "age_range": "25-45",
+    "interests": ["entrepreneurship", "investing", "personal finance", "productivity", "African business"],
+    "pain_points": ["access to capital", "finding customers", "managing cash flow", "scaling past early revenue"],
+    "aspirations": ["build a profitable business", "achieve financial freedom", "create jobs", "invest wisely"],
+    "language_register": "professional but real, no jargon without explanation",
+    "active_hours": { "weekday": ["07:00", "12:30", "20:00"], "weekend": ["09:00", "14:00"] },
+    "best_posting_days": ["Monday", "Tuesday", "Thursday", "Friday"]
+  },
+
+  "local_context": {
+    "city": "Nairobi",
+    "currency": "KES",
+    "local_references": ["M-Pesa", "NSE", "KRA", "Nairobi CBD", "Westlands business district", "KCB", "Equity Bank", "Co-op Bank", "Fuliza"],
+    "regional_hashtags": ["#NairobiBusiness", "#KenyaBusiness", "#KenyanEntrepreneur", "#AfricanStartup", "#KenyaFinance"]
+  },
+
+  "visual_style": {
+    "photography_style": "professional lifestyle, clean office, product mockups",
+    "color_mood": "clean, trustworthy, navy and white with warm accents",
+    "aesthetic": "aspirational but grounded, real people not stock photos",
+    "image_prompt_suffix": "business photography, professional setting, clean desk, Nairobi urban background, confident professional, natural light"
+  },
+
+  "hashtags": {
+    "broad":  ["#Business", "#Entrepreneur", "#Finance", "#Investing"],
+    "mid":    ["#KenyaBusiness", "#AfricanStartup", "#NairobiBusiness", "#PersonalFinance"],
+    "niche":  ["#KenyanEntrepreneur", "#NairobiStartup", "#KenyaFinance", "#AfricanEntrepreneur", "#KenyaInvesting"]
+  },
+
+  "competitor_handles": [],
+  "content_pillars_preset": ["entrepreneurship", "personal finance", "business tools", "African business landscape"]
+}

@@ -1,0 +1,65 @@
+{
+  "id": "travel_lifestyle",
+  "name": "Travel & Lifestyle",
+  "sub_niche": "General",
+  "description": "Travel guides, adventure, culture, bucket lists, and living well",
+
+  "vocabulary": {
+    "primary_entity": "destination / experience",
+    "action_verb": "explore / discover",
+    "location_type": "destination / attraction",
+    "resource_noun": "gear / budget",
+    "expert_title": "travel creator / explorer",
+    "audience_role": "traveller / adventurer",
+    "result_noun": "unforgettable trip",
+    "industry_term": "travel industry"
+  },
+
+  "archetype_overrides": {
+    "process_tutorial":    { "label": "Travel how-to",           "example_topics": ["how to plan a Kenya road trip on a budget", "how to book affordable flights from Nairobi", "how to pack for a week in one bag"] },
+    "location_spotlight":  { "label": "Destination spotlight",   "example_topics": ["hidden beach in Diani", "underrated game park", "Nairobi neighbourhood guide"] },
+    "myth_busting":        { "label": "Travel myth busting",     "example_topics": ["travelling is expensive", "Africa is dangerous to visit", "you need months to plan a trip"] },
+    "resource_list":       { "label": "Travel resource list",    "example_topics": ["5 apps every Kenyan traveller needs", "best travel credit cards for Africans", "cheap accommodation options"] },
+    "personal_journey":    { "label": "Travel story",            "example_topics": ["my solo trip that changed me", "how I travelled to 10 countries on a budget", "the trip that went wrong"] },
+    "quick_win":           { "label": "Quick travel tip",        "example_topics": ["pack this one thing on every trip", "save 30% on accommodation with this trick", "best time to book flights from Nairobi"] },
+    "industry_commentary": { "label": "Travel culture take",     "example_topics": ["over-tourism is ruining Kenya's parks", "the problem with travel influencers", "how to travel more sustainably"] },
+    "behind_scenes":       { "label": "Trip behind the scenes",  "example_topics": ["what my travel setup actually looks like", "the unglamorous side of travel", "how much this trip actually cost"] },
+    "comparison":          { "label": "Destination comparison",  "example_topics": ["Diani vs Watamu", "budget safari vs luxury safari", "Nairobi vs Mombasa weekend"] },
+    "community_spotlight": { "label": "Traveller spotlight",     "example_topics": ["reader's Kenya road trip", "follower's first solo adventure", "community travel wins this month"] },
+    "hot_take":            { "label": "Travel hot take",         "example_topics": ["tourist traps not worth the money", "Airbnb ruined local communities", "luxury travel is a waste"] },
+    "deep_dive":           { "label": "Destination deep dive",   "example_topics": ["everything you need to know about Amboseli", "complete guide to the Kenyan coast", "East Africa in 3 weeks"] }
+  },
+
+  "audience": {
+    "age_range": "22-40",
+    "interests": ["travel", "photography", "culture", "adventure", "food", "lifestyle"],
+    "pain_points": ["travel is too expensive", "don't know where to start", "visa complications", "safety concerns"],
+    "aspirations": ["see Africa before anywhere else", "travel more often", "find hidden gems", "document experiences"],
+    "language_register": "inspiring, adventurous, conversational",
+    "active_hours": { "weekday": ["07:00", "12:00", "21:00"], "weekend": ["09:00", "14:00", "20:00"] },
+    "best_posting_days": ["Wednesday", "Friday", "Saturday", "Sunday"]
+  },
+
+  "local_context": {
+    "city": "Nairobi",
+    "currency": "KES",
+    "local_references": ["Maasai Mara", "Diani", "Amboseli", "Lake Nakuru", "Lamu", "Nairobi National Park", "matatu", "Safari"],
+    "regional_hashtags": ["#VisitKenya", "#KenyaTravel", "#NairobiWeekend", "#ExploreEastAfrica", "#AfricanTravel"]
+  },
+
+  "visual_style": {
+    "photography_style": "vibrant landscape and lifestyle photography",
+    "color_mood": "rich, saturated, golden hour, earth tones",
+    "aesthetic": "adventurous authenticity over staged perfection",
+    "image_prompt_suffix": "travel photography, Kenya landscape, golden hour light, vibrant colours, wide angle, authentic local scene"
+  },
+
+  "hashtags": {
+    "broad":  ["#Travel", "#Wanderlust", "#Adventure", "#Explore"],
+    "mid":    ["#VisitKenya", "#KenyaTravel", "#AfricanTravel", "#EastAfrica"],
+    "niche":  ["#ExploreKenya", "#NairobiWeekend", "#KenyaSafari", "#ExploreEastAfrica", "#KenyaAdventure"]
+  },
+
+  "competitor_handles": [],
+  "content_pillars_preset": ["destination guides", "budget travel tips", "local hidden gems", "travel stories"]
+}

@@ -1,0 +1,65 @@
+{
+  "id": "fitness_wellness",
+  "name": "Fitness & Wellness",
+  "sub_niche": "General",
+  "description": "Workouts, nutrition, mental health, body transformation, and healthy living",
+
+  "vocabulary": {
+    "primary_entity": "workout / exercise",
+    "action_verb": "train / build",
+    "location_type": "gym / studio",
+    "resource_noun": "equipment / supplement",
+    "expert_title": "fitness coach / personal trainer",
+    "audience_role": "beginner / athlete",
+    "result_noun": "transformation / personal record",
+    "industry_term": "fitness industry"
+  },
+
+  "archetype_overrides": {
+    "process_tutorial":    { "label": "Workout guide",           "example_topics": ["beginner push/pull split", "30-min home workout", "how to do a proper squat"] },
+    "location_spotlight":  { "label": "Gym review",             "example_topics": ["best gym in Nairobi", "affordable fitness studio", "outdoor training spot"] },
+    "myth_busting":        { "label": "Fitness myth busting",   "example_topics": ["cardio kills gains", "you need a gym to get fit", "women shouldn't lift heavy"] },
+    "resource_list":       { "label": "Equipment / app list",   "example_topics": ["5 home gym essentials", "best free workout apps", "supplements worth buying"] },
+    "personal_journey":    { "label": "Transformation story",   "example_topics": ["my weight loss journey", "from couch to 5K", "how I built discipline"] },
+    "quick_win":           { "label": "Quick workout tip",      "example_topics": ["10-min morning routine", "one stretch that changes everything", "fastest abs circuit"] },
+    "industry_commentary": { "label": "Fitness culture take",   "example_topics": ["gym culture is toxic", "the problem with diet culture", "social media vs real fitness"] },
+    "behind_scenes":       { "label": "Training day vlog",      "example_topics": ["my full training day", "what I eat in a day", "morning routine breakdown"] },
+    "comparison":          { "label": "Training method face-off", "example_topics": ["HIIT vs steady state cardio", "home vs gym workouts", "cutting vs bulking"] },
+    "community_spotlight": { "label": "Client transformation",  "example_topics": ["client 90-day result", "follower's first 5K", "reader's gym setup"] },
+    "hot_take":            { "label": "Fitness hot take",       "example_topics": ["rest days matter more than training", "most gym advice is wrong", "diet > exercise always"] },
+    "deep_dive":           { "label": "Training concept explained", "example_topics": ["progressive overload explained", "the science of fat loss", "how sleep affects gains"] }
+  },
+
+  "audience": {
+    "age_range": "20-40",
+    "interests": ["health", "sport", "nutrition", "mental wellness", "self-improvement"],
+    "pain_points": ["not seeing results", "no time to train", "not knowing where to start", "gym intimidation"],
+    "aspirations": ["build a consistent routine", "visible results", "feel confident", "run a race"],
+    "language_register": "motivating but grounded",
+    "active_hours": { "weekday": ["06:00", "12:00", "19:00"], "weekend": ["07:00", "11:00"] },
+    "best_posting_days": ["Monday", "Wednesday", "Friday", "Sunday"]
+  },
+
+  "local_context": {
+    "city": "Nairobi",
+    "currency": "KES",
+    "local_references": ["Karura Forest", "Uhuru Park", "Nairobi Marathon", "Gym @ Junction", "protein shakes", "M-Pesa gym payments"],
+    "regional_hashtags": ["#NairobiFitness", "#KenyaFitness", "#NairobiGym", "#FitKenya", "#NairobiRunner"]
+  },
+
+  "visual_style": {
+    "photography_style": "high contrast action and lifestyle photography",
+    "color_mood": "bold, energetic, clean whites and dark backgrounds",
+    "aesthetic": "authentic effort over polished perfection",
+    "image_prompt_suffix": "fitness photography, natural light, athletic wear, motion blur or sharp action, clean background, motivational"
+  },
+
+  "hashtags": {
+    "broad":  ["#Fitness", "#Workout", "#Health", "#Gym"],
+    "mid":    ["#NairobiFitness", "#KenyaFitness", "#AfricanFitness", "#HomeWorkout"],
+    "niche":  ["#NairobiGym", "#FitKenya", "#NairobiRunner", "#KenyaHealth", "#NairobiWellness"]
+  },
+
+  "competitor_handles": [],
+  "content_pillars_preset": ["workouts", "nutrition", "mindset", "transformation stories"]
+}

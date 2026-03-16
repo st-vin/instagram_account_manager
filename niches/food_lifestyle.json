@@ -1,0 +1,65 @@
+{
+  "id": "food_lifestyle",
+  "name": "Food & Lifestyle",
+  "sub_niche": "General",
+  "description": "Restaurants, home cooking, recipes, food culture, and everyday living",
+
+  "vocabulary": {
+    "primary_entity": "dish / meal",
+    "action_verb": "cook / prepare",
+    "location_type": "restaurant / kitchen",
+    "resource_noun": "ingredient / tool",
+    "expert_title": "food blogger / chef",
+    "audience_role": "home cook / foodie",
+    "result_noun": "perfect meal",
+    "industry_term": "food scene"
+  },
+
+  "archetype_overrides": {
+    "process_tutorial":    { "label": "Recipe walkthrough",      "example_topics": ["one-pan pasta", "homemade chapati", "quick fried rice"] },
+    "location_spotlight":  { "label": "Restaurant review",       "example_topics": ["hidden gem eatery", "best nyama choma spot", "affordable lunch place"] },
+    "myth_busting":        { "label": "Food myth busting",       "example_topics": ["meal prep is boring", "healthy food is expensive", "cooking takes too long"] },
+    "resource_list":       { "label": "Kitchen essentials",      "example_topics": ["5 tools every home cook needs", "best budget ingredients", "apps for meal planning"] },
+    "personal_journey":    { "label": "My food story",           "example_topics": ["how I learned to cook", "my relationship with food", "eating on a budget journey"] },
+    "quick_win":           { "label": "Quick kitchen hack",      "example_topics": ["3-minute breakfast", "leftover transformation", "no-dish meal"] },
+    "industry_commentary": { "label": "Food trend take",         "example_topics": ["viral TikTok recipes", "overpriced restaurants", "food delivery culture"] },
+    "behind_scenes":       { "label": "Meal prep behind scenes", "example_topics": ["my Sunday prep routine", "kitchen setup tour", "grocery haul breakdown"] },
+    "comparison":          { "label": "Cook at home vs eat out", "example_topics": ["home vs restaurant cost", "meal prep vs takeout", "budget ingredients face-off"] },
+    "community_spotlight": { "label": "Reader recipe feature",   "example_topics": ["follower tries my recipe", "reader's kitchen setup", "community cook-along"] },
+    "hot_take":            { "label": "Spicy food opinion",      "example_topics": ["ugali is overrated", "meal prep culture is toxic", "restaurant reviews are dishonest"] },
+    "deep_dive":           { "label": "Ingredient deep dive",    "example_topics": ["everything about fermentation", "the science of flavour", "Kenyan superfoods explained"] }
+  },
+
+  "audience": {
+    "age_range": "22-38",
+    "interests": ["cooking", "dining out", "wellness", "culture", "travel"],
+    "pain_points": ["not enough time to cook", "eating healthy on a budget", "running out of meal ideas"],
+    "aspirations": ["cook impressive meals", "discover great spots", "eat well without spending much"],
+    "language_register": "casual and warm",
+    "active_hours": { "weekday": ["12:00", "18:00", "21:00"], "weekend": ["10:00", "13:00", "19:00"] },
+    "best_posting_days": ["Tuesday", "Thursday", "Saturday", "Sunday"]
+  },
+
+  "local_context": {
+    "city": "Nairobi",
+    "currency": "KES",
+    "local_references": ["nyama choma", "chapati", "mandazi", "ugali", "Java House", "Westlands", "Karen", "M-Pesa"],
+    "regional_hashtags": ["#NairobiFood", "#NairobiEats", "#KenyaFoodie", "#EatNairobi", "#NairobiFoodBlogger"]
+  },
+
+  "visual_style": {
+    "photography_style": "warm editorial food photography",
+    "color_mood": "warm, golden, inviting",
+    "aesthetic": "home kitchen realness meets aspirational plating",
+    "image_prompt_suffix": "food photography, warm lighting, wooden surfaces, shallow depth of field, steam, appetising"
+  },
+
+  "hashtags": {
+    "broad":  ["#Food", "#Foodie", "#FoodPhotography", "#Cooking"],
+    "mid":    ["#NairobiFood", "#KenyaFood", "#AfricanFood", "#HomeCooking"],
+    "niche":  ["#NairobiEats", "#KenyaFoodie", "#NairobiFoodBlogger", "#EatNairobi", "#KenyanCooking"]
+  },
+
+  "competitor_handles": [],
+  "content_pillars_preset": ["hidden gems", "easy recipes", "food on a budget", "lifestyle & culture"]
+}

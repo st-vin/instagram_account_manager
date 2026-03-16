@@ -1,0 +1,65 @@
+{
+  "id": "tech_developer",
+  "name": "Tech & Developer",
+  "sub_niche": "General",
+  "description": "Software engineering, startups, dev tools, career growth, and African tech ecosystem",
+
+  "vocabulary": {
+    "primary_entity": "project / feature",
+    "action_verb": "build / deploy",
+    "location_type": "codebase / startup",
+    "resource_noun": "tool / library",
+    "expert_title": "software engineer / founder",
+    "audience_role": "developer / learner",
+    "result_noun": "shipped product / new role",
+    "industry_term": "tech industry"
+  },
+
+  "archetype_overrides": {
+    "process_tutorial":    { "label": "Technical tutorial",      "example_topics": ["deploy to Railway in 10 min", "build a REST API with Flask", "set up CI/CD from scratch"] },
+    "location_spotlight":  { "label": "Tool / platform review",  "example_topics": ["best free hosting for Kenyan devs", "VS Code extensions I use daily", "this database changed how I build"] },
+    "myth_busting":        { "label": "Dev myth busting",        "example_topics": ["you don't need a CS degree", "senior devs don't Google less", "JavaScript is not a real language"] },
+    "resource_list":       { "label": "Dev resource list",       "example_topics": ["5 free tools every dev should know", "GitHub repos worth studying", "best Kenyan dev communities"] },
+    "personal_journey":    { "label": "Career story",            "example_topics": ["bootcamp to senior engineer", "my first job hunt", "how I got into open source"] },
+    "quick_win":           { "label": "Quick dev tip",           "example_topics": ["Git alias that saves an hour", "one terminal command I use daily", "fastest way to debug this error"] },
+    "industry_commentary": { "label": "Tech industry take",      "example_topics": ["what AI means for junior devs", "the African dev ecosystem in 2026", "why most coding bootcamps fail"] },
+    "behind_scenes":       { "label": "Dev day in the life",     "example_topics": ["my actual development setup", "a day as a remote Kenyan engineer", "how I structure my coding sessions"] },
+    "comparison":          { "label": "Tech decision breakdown", "example_topics": ["React vs Vue for beginners", "SQL vs NoSQL for your project", "cloud vs self-hosted"] },
+    "community_spotlight": { "label": "Builder spotlight",       "example_topics": ["this dev shipped an impressive project", "Kenyan startup worth watching", "open source contribution from the community"] },
+    "hot_take":            { "label": "Tech hot take",           "example_topics": ["TypeScript before JavaScript is a mistake", "most standups are a waste of time", "remote work made me a better engineer"] },
+    "deep_dive":           { "label": "Concept explained",       "example_topics": ["how DNS actually works", "database indexing from scratch", "the full OAuth flow explained"] }
+  },
+
+  "audience": {
+    "age_range": "20-35",
+    "interests": ["coding", "startups", "open source", "career growth", "African tech"],
+    "pain_points": ["imposter syndrome", "landing first job", "keeping up with new tech", "freelance vs employment"],
+    "aspirations": ["ship products", "remote work", "contribute to open source", "start a company"],
+    "language_register": "technical but accessible, peer-to-peer",
+    "active_hours": { "weekday": ["08:00", "13:00", "20:00"], "weekend": ["10:00", "15:00"] },
+    "best_posting_days": ["Tuesday", "Wednesday", "Thursday"]
+  },
+
+  "local_context": {
+    "city": "Nairobi",
+    "currency": "KES",
+    "local_references": ["iHub", "Andela", "Safaricom", "M-Pesa API", "Moringa School", "GDG Nairobi", "Mpesa SDK", "Flutterwave"],
+    "regional_hashtags": ["#NairobiTech", "#KenyaTech", "#AfricanDev", "#iHub", "#TechNairobi"]
+  },
+
+  "visual_style": {
+    "photography_style": "clean desk setup, code screenshots, dark mode UI",
+    "color_mood": "dark mode, monochrome, accent blues and greens",
+    "aesthetic": "minimal, functional, no-fluff",
+    "image_prompt_suffix": "tech photography, minimal desk setup, dark mode, clean code on screen, professional, flat lay"
+  },
+
+  "hashtags": {
+    "broad":  ["#Developer", "#Coding", "#Programming", "#Tech"],
+    "mid":    ["#NairobiTech", "#KenyaTech", "#AfricanDev", "#WebDev"],
+    "niche":  ["#TechNairobi", "#KenyaDeveloper", "#AfricanTech", "#iHub", "#NairobiStartup"]
+  },
+
+  "competitor_handles": [],
+  "content_pillars_preset": ["tutorials & how-tos", "career growth", "tools & resources", "African tech ecosystem"]
+}

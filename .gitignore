@@ -1,0 +1,15 @@
+.env
+.ig_config.json
+smm.db
+*.pyc
+__pycache__/
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+gcp-credentials.json
+sheets-credentials.json
+*.log
+.DS_Store
+instagram_smm_playbook.md
