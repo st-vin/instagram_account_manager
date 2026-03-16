@@ -4,6 +4,9 @@ let _activeNiche    = null;   // full niche profile object
 let _archetypes     = [];     // current niche's archetype list
 let _activeComment  = null;
 let _generatedProfile = null; // holds AI-generated profile pending save
+let _overviewRange = '7d';
+let _overviewSeries = null;   // { reach: number[], eng: number[] }
+let _kpiWeeks = [];           // cached for trend calcs
 
 /* ── Navigation ─────────────────────────────────────────── */
 function navigate(page) {
@@ -13,6 +16,29 @@ function navigate(page) {
   const navEl  = document.querySelector(`[data-page="${page}"]`);
   if (pageEl) pageEl.classList.add('active');
   if (navEl)  navEl.classList.add('active');
+
+  // Ensure good tooltips when sidebar is collapsed (icon-only)
+  try {
+    document.querySelectorAll('.nav-item[data-page]').forEach(btn => {
+      const label = btn.querySelector('span.truncate')?.textContent?.trim();
+      if (label) btn.setAttribute('title', label);
+    });
+  } catch {}
+
+  const titleMap = {
+    overview: "Overview",
+    generate: "Generate Content",
+    calendar: "Content Calendar",
+    engagement: "Engagement Monitor",
+    kpi: "KPI & Reports",
+    scheduler: "Scheduler",
+    accounts: "Accounts",
+    niches: "Niche Profiles",
+    onboarding: "Create Niche",
+    settings: "Settings",
+  };
+  const headerTitle = el('page-title');
+  if (headerTitle) headerTitle.textContent = titleMap[page] || "SMM Engine";
 
   const loaders = {
     overview:    loadOverview,
@@ -52,6 +78,32 @@ function fmt(n) {
   if (n == null || n === '') return '—';
   if (typeof n === 'number') return n >= 1000 ? (n/1000).toFixed(1) + 'k' : n.toLocaleString();
   return n;
+}
+
+function clamp(n, min, max) { return Math.max(min, Math.min(max, n)); }
+
+function trendBadgeClass(kind) {
+  if (kind === 'up') {
+    return 'text-emerald-500 bg-emerald-50 dark:bg-emerald-500/10 px-2 py-1 rounded-full';
+  }
+  if (kind === 'down') {
+    return 'text-rose-500 bg-rose-50 dark:bg-rose-500/10 px-2 py-1 rounded-full';
+  }
+  return 'text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-full';
+}
+
+function setTrendPill(elId, { kind = 'neutral', text = '—' } = {}) {
+  const pill = el(elId);
+  if (!pill) return;
+  pill.className = `text-[10px] font-black uppercase tracking-wider ${trendBadgeClass(kind)}`;
+  pill.textContent = text;
+}
+
+function setBarWidth(elId, pct) {
+  const bar = el(elId);
+  if (!bar) return;
+  const p = clamp(pct, 0, 100);
+  bar.style.width = `${p}%`;
 }
 
 function copyText(text) {
@@ -113,9 +165,10 @@ async function loadActiveNiche(nicheId) {
 function updateNicheContextPill() {
   const pill = el('gen-niche-pill');
   if (!pill) return;
+  const label = el('gen-niche-pill-label');
   if (_activeNiche) {
-    pill.textContent = _activeNiche.name;
-    pill.style.display = 'inline-block';
+    if (label) label.textContent = _activeNiche.name;
+    pill.style.display = 'inline-flex';
   } else {
     pill.style.display = 'none';
   }
@@ -127,6 +180,10 @@ function populateArchetypeSelects() {
   selects.forEach(sid => {
     const s = el(sid);
     if (!s) return;
+    if (!_archetypes.length) {
+      s.innerHTML = '<option disabled selected value="">Create/select a niche profile first</option>';
+      return;
+    }
     s.innerHTML = _archetypes.map(a =>
       `<option value="${a.id}">${a.label}</option>`
     ).join('');
@@ -161,6 +218,127 @@ async function checkStatus() {
   }
 }
 
+/* ── Overview chart renderer ────────────────────────────── */
+function renderOverviewChart(series, range = '7d') {
+  const svgLine = el('overview-line');
+  const svgLine2 = el('overview-line2');
+  const svgArea = el('overview-area');
+  if (!svgLine || !svgLine2 || !svgArea) return;
+
+  const reach = (series?.reach || []).map(Number).filter(n => Number.isFinite(n));
+  const eng = (series?.eng || []).map(Number).filter(n => Number.isFinite(n));
+  if (!reach.length || !eng.length) return;
+
+  const w = 900, h = 260;
+  const padL = 18, padR = 18, padT = 16, padB = 20;
+  const innerW = w - padL - padR;
+  const innerH = h - padT - padB;
+
+  const n = Math.min(reach.length, eng.length);
+  const rx = reach.slice(-n);
+  const ex = eng.slice(-n);
+
+  const rMin = Math.min(...rx), rMax = Math.max(...rx);
+  const eMin = Math.min(...ex), eMax = Math.max(...ex);
+
+  const safeSpan = (min, max) => (max - min) || 1;
+  const rSpan = safeSpan(rMin, rMax);
+  const eSpan = safeSpan(eMin, eMax);
+
+  const points = Array.from({ length: n }, (_, i) => {
+    const x = padL + (innerW * (n === 1 ? 0 : i / (n - 1)));
+    const rNorm = (rx[i] - rMin) / rSpan;
+    const eNorm = (ex[i] - eMin) / eSpan;
+    const yR = padT + innerH * (1 - rNorm);
+    const yE = padT + innerH * (1 - eNorm);
+    return { x, yR, yE };
+  });
+
+  const linePath = (key) => {
+    if (!points.length) return '';
+    let d = `M ${points[0].x.toFixed(2)} ${points[0][key].toFixed(2)}`;
+    for (let i = 1; i < points.length; i++) {
+      const p0 = points[i - 1];
+      const p1 = points[i];
+      const cx = ((p0.x + p1.x) / 2);
+      d += ` Q ${cx.toFixed(2)} ${p0[key].toFixed(2)}, ${p1.x.toFixed(2)} ${p1[key].toFixed(2)}`;
+    }
+    return d;
+  };
+
+  const reachLine = linePath('yR');
+  const engLine = linePath('yE');
+  svgLine.setAttribute('d', reachLine);
+  svgLine2.setAttribute('d', engLine);
+
+  const areaD = `${reachLine} L ${(points[points.length - 1].x).toFixed(2)} ${(padT + innerH).toFixed(2)} L ${(points[0].x).toFixed(2)} ${(padT + innerH).toFixed(2)} Z`;
+  svgArea.setAttribute('d', areaD);
+
+  // Accessibility hint (non-visual): attach title for the current range
+  const chart = el('overview-chart');
+  if (chart) chart.setAttribute('aria-label', `Overview chart (${range})`);
+}
+
+function pickSeriesForRange(series, range) {
+  const target = range === '90d' ? 30 : range === '28d' ? 16 : 10;
+  const reach = (series?.reach || []);
+  const eng = (series?.eng || []);
+  const n = Math.min(reach.length, eng.length);
+  const take = Math.min(target, n);
+  return { reach: reach.slice(-take), eng: eng.slice(-take) };
+}
+
+function setOverviewRange(range, btn) {
+  _overviewRange = range;
+  const wrap = btn?.closest('div');
+  if (wrap) {
+    wrap.querySelectorAll('button[data-chart-range]').forEach(b => {
+      const active = b.getAttribute('data-chart-range') === range;
+      b.className = active
+        ? 'px-3 py-1 rounded-full bg-primary/10 text-primary'
+        : 'px-3 py-1 rounded-full text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors';
+    });
+  }
+  if (_overviewSeries) renderOverviewChart(pickSeriesForRange(_overviewSeries, range), range);
+}
+
+function synthesizeOverviewSeries({ metrics, weeks }) {
+  // If we have weekly KPI history, derive a smooth-ish series from it.
+  const baseReach = Number(metrics?.reach_7d) || Number(weeks?.[0]?.avg_reach) || 1000;
+  const baseEng = Number(weeks?.[0]?.avg_eng_rate) || 5;
+
+  const wk = (weeks || []).slice().reverse(); // oldest → newest
+  const reachWeekly = wk.map(w => Number(w.avg_reach)).filter(Number.isFinite);
+  const engWeekly = wk.map(w => Number(w.avg_eng_rate)).filter(Number.isFinite);
+
+  const makeSeries = (arr, fallback) => {
+    if (arr.length >= 2) return arr;
+    // fallback deterministic micro-variation
+    return Array.from({ length: 8 }, (_, i) => fallback * (0.92 + 0.04 * Math.sin(i * 0.9)));
+  };
+
+  const rSrc = makeSeries(reachWeekly, baseReach);
+  const eSrc = makeSeries(engWeekly, baseEng);
+
+  // Expand weekly points into a denser series (simple interpolation).
+  const expand = (src, mult) => {
+    const out = [];
+    for (let i = 0; i < src.length - 1; i++) {
+      const a = src[i], b = src[i + 1];
+      for (let k = 0; k < mult; k++) {
+        const t = k / mult;
+        out.push(a + (b - a) * t);
+      }
+    }
+    out.push(src[src.length - 1]);
+    return out;
+  };
+
+  const reach = expand(rSrc, 3);
+  const eng = expand(eSrc, 3);
+  return { reach, eng };
+}
+
 /* ── Overview ───────────────────────────────────────────── */
 async function loadOverview() {
   try {
@@ -169,16 +347,57 @@ async function loadOverview() {
       API.get('/instagram/comments'),
       API.get('/kpi/weekly'),
     ]);
+
+    let m = null;
+    if (metrics.status === 'fulfilled') m = metrics.value;
+
+    _kpiWeeks = [];
     if (metrics.status === 'fulfilled') {
       el('m-followers').textContent = fmt(metrics.value.followers);
       el('m-reach').textContent     = fmt(metrics.value.reach_7d);
     }
     if (kpi.status === 'fulfilled' && kpi.value.weeks?.length) {
-      const w = kpi.value.weeks[0];
+      _kpiWeeks = kpi.value.weeks || [];
+      const w = _kpiWeeks[0];
       el('m-eng').textContent = (w.avg_eng_rate || 0).toFixed(1) + '%';
-      const delta = w.follower_delta || 0;
-      el('m-followers-delta').textContent  = (delta >= 0 ? '+' : '') + delta + ' this week';
-      el('m-followers-delta').className    = 'metric-delta ' + (delta >= 0 ? 'up' : 'down');
+      const delta = Number(w.follower_delta || 0);
+      const kind = delta > 0 ? 'up' : delta < 0 ? 'down' : 'neutral';
+      setTrendPill('m-followers-trend', {
+        kind,
+        text: (delta === 0) ? 'FLAT' : `${delta > 0 ? '+' : ''}${delta}`,
+      });
+
+      // Engagement delta vs previous week
+      const prev = _kpiWeeks[1];
+      const curEng = Number(w.avg_eng_rate || 0);
+      const prevEng = Number(prev?.avg_eng_rate || 0);
+      const dEng = curEng - prevEng;
+      const engKind = dEng > 0.05 ? 'up' : dEng < -0.05 ? 'down' : 'neutral';
+      setTrendPill('m-comments-trend', { kind: 'neutral', text: 'PENDING' }); // placeholder, updated below by comments
+      // Reuse followers trend pill structure for engagement (badge is static "WEEK" in HTML; leave it)
+      setBarWidth('m-eng-bar', clamp(curEng, 0, 15) / 15 * 100);
+      // Show eng delta in title pill by swapping text if present (optional)
+      // (We don't have a dedicated element in HTML; keep bar + value.)
+
+      // Reach trend vs previous week average reach
+      const curReach = Number(m?.reach_7d) || Number(w.avg_reach || 0);
+      const prevReach = Number(prev?.avg_reach || 0);
+      const dReach = curReach - prevReach;
+      const reachKind = dReach > 1 ? 'up' : dReach < -1 ? 'down' : 'neutral';
+      setTrendPill('m-followers-trend', {
+        kind,
+        text: (delta === 0) ? 'FLAT' : `${delta > 0 ? '+' : ''}${delta}`,
+      });
+      // Reach/Comments pills are already present; Reach pill is static "7D" in HTML so we only update bars.
+      setBarWidth('m-reach-bar', curReach > 0 ? clamp(curReach / Math.max(curReach, prevReach || curReach), 0.25, 1) * 100 : 60);
+
+      // Followers bar: use delta magnitude as subtle indicator
+      const base = Number(w.followers || 0) || Number(m?.followers || 0) || 1;
+      const pct = clamp((Math.abs(delta) / Math.max(base, 1)) * 1200, 12, 96);
+      setBarWidth('m-followers-bar', pct);
+
+      // Engagement trend pill isn't rendered in HTML as dynamic; but we can tint the value via bar only.
+      // If you want a dynamic pill, add an element id and we’ll wire it similarly.
     }
     if (comments.status === 'fulfilled') {
       const cnt = comments.value.pending_count || 0;
@@ -186,7 +405,24 @@ async function loadOverview() {
       const b = el('pending-badge');
       b.textContent    = cnt;
       b.style.display  = cnt > 0 ? 'inline-flex' : 'none';
+
+      setTrendPill('m-comments-trend', {
+        kind: cnt > 0 ? 'down' : 'neutral',
+        text: cnt > 6 ? 'URGENT' : (cnt > 0 ? 'PENDING' : 'CLEAR'),
+      });
+      setBarWidth('m-comments-bar', cnt === 0 ? 18 : clamp(cnt, 1, 20) / 20 * 100);
     }
+
+    // Reach bar baseline if KPI missing
+    if (m) {
+      setBarWidth('m-reach-bar', clamp(Number(m.reach_7d || 0), 0, 50000) / 50000 * 100);
+    }
+
+    // Chart: build + render once we have any useful data.
+    const weeks = (kpi.status === 'fulfilled') ? (kpi.value.weeks || []) : [];
+    _overviewSeries = synthesizeOverviewSeries({ metrics: m, weeks });
+    renderOverviewChart(pickSeriesForRange(_overviewSeries, _overviewRange), _overviewRange);
+
     loadRecentPosts();
   } catch (e) {
     html('overview-metrics', `<div class="error-msg">${e.message}</div>`);
@@ -201,18 +437,34 @@ async function loadRecentPosts() {
     const posts = data.posts || [];
     if (!posts.length) { grid.innerHTML = '<div class="loading">No posts found.</div>'; return; }
     grid.innerHTML = posts.map(p => `
-      <div class="post-card">
-        <div class="post-thumb">${p.thumbnail ? `<img src="${p.thumbnail}" alt="" loading="lazy">` : 'No preview'}</div>
-        <div class="post-meta">
-          <div class="post-type">${p.type}</div>
-          <div class="post-stats">
-            <div class="post-stat"><strong>${fmt(p.metrics.reach)}</strong><br>reach</div>
-            <div class="post-stat"><strong>${p.metrics.engagement_rate}%</strong><br>eng.</div>
-            <div class="post-stat"><strong>${fmt(p.metrics.saves)}</strong><br>saves</div>
-            <div class="post-stat"><strong>${fmt(p.metrics.shares)}</strong><br>shares</div>
+      <div class="group bg-white dark:bg-slate-900 rounded-xl overflow-hidden border border-slate-200/70 dark:border-slate-800 transition-all hover:-translate-y-0.5 hover:shadow-xl">
+        <div class="aspect-[4/5] bg-slate-200 dark:bg-slate-800 relative overflow-hidden">
+          ${p.thumbnail ? `<img src="${p.thumbnail}" alt="" loading="lazy" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105">` : `<div class="w-full h-full flex items-center justify-center text-xs text-slate-400">No preview</div>`}
+          <div class="absolute top-3 left-3 px-2 py-1 bg-white/90 dark:bg-slate-900/90 rounded text-[10px] font-extrabold uppercase backdrop-blur-sm">${p.type}</div>
+        </div>
+        <div class="p-4 space-y-3">
+          <div class="grid grid-cols-2 gap-2">
+            <div class="text-[10px] text-slate-400 uppercase font-extrabold tracking-tighter">Reach</div>
+            <div class="text-[10px] text-slate-400 uppercase font-extrabold tracking-tighter text-right">Eng.</div>
+            <div class="text-xs font-extrabold">${fmt(p.metrics.reach)}</div>
+            <div class="text-xs font-extrabold text-right">${p.metrics.engagement_rate}%</div>
+          </div>
+          <div class="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-800">
+            <div class="flex items-center gap-3 text-slate-400">
+              <div class="flex items-center gap-1">
+                <span class="material-symbols-outlined text-sm">bookmark</span>
+                <span class="text-[10px] font-extrabold">${fmt(p.metrics.saves)}</span>
+              </div>
+              <div class="flex items-center gap-1">
+                <span class="material-symbols-outlined text-sm">share</span>
+                <span class="text-[10px] font-extrabold">${fmt(p.metrics.shares)}</span>
+              </div>
+            </div>
+            <span class="material-symbols-outlined text-slate-300 group-hover:text-primary transition-colors">more_horiz</span>
           </div>
         </div>
-      </div>`).join('');
+      </div>
+    `).join('');
   } catch (e) {
     grid.innerHTML = `<div class="error-msg">Could not load posts: ${e.message}</div>`;
   }
@@ -230,16 +482,71 @@ async function generateCaption() {
       account_type: val('cap-actype'),
     });
     box.innerHTML = `
-      <div class="result-section"><div class="result-label">Hook</div><div class="result-text">${d.hook}</div></div>
-      <div class="result-section"><div class="result-label">Body</div><div class="result-text">${(d.body||'').replace(/\n/g,'<br>')}</div></div>
-      <div class="result-section"><div class="result-label">CTA</div><div class="result-text">${d.cta}</div></div>
-      <div class="result-section">
-        <div class="result-label">Hashtags</div>
-        <div class="hashtag-row">${(d.hashtags||[]).map(h=>`<span class="hashtag">${h}</span>`).join('')}</div>
+      <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-xl shadow-primary/5 border border-primary/20 overflow-hidden mt-6">
+        <div class="p-4 bg-primary/5 border-b border-primary/10 flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="flex h-2 w-2 rounded-full bg-green-500 animate-pulse"></span>
+            <span class="text-xs font-extrabold text-primary uppercase tracking-wider">Ready to publish</span>
+          </div>
+          <div class="flex gap-2">
+            <button class="p-2 text-slate-500 hover:text-primary hover:bg-primary/10 rounded-lg transition-colors flex items-center gap-2 text-xs font-extrabold"
+                    title="Copy All"
+                    onclick="copyText(${JSON.stringify(`${d.hook}\n\n${d.body||''}\n\n${d.cta}\n\n${(d.hashtags||[]).join(' ')}`)})">
+              <span class="material-symbols-outlined text-[18px]">content_copy</span>
+              Copy
+            </button>
+            <button class="p-2 text-slate-500 hover:text-primary hover:bg-primary/10 rounded-lg transition-colors flex items-center gap-2 text-xs font-extrabold"
+                    title="Regenerate"
+                    onclick="generateCaption()">
+              <span class="material-symbols-outlined text-[18px]">refresh</span>
+              Regen
+            </button>
+          </div>
+        </div>
+        <div class="p-8 space-y-8">
+          <section>
+            <h4 class="text-[10px] font-extrabold text-slate-400 uppercase tracking-[0.2em] mb-3">The Hook</h4>
+            <p class="text-lg font-black text-slate-900 dark:text-white leading-tight">${d.hook || ''}</p>
+          </section>
+          <section>
+            <h4 class="text-[10px] font-extrabold text-slate-400 uppercase tracking-[0.2em] mb-3">The Body</h4>
+            <div class="bg-slate-50 dark:bg-slate-800/50 p-6 rounded-xl border border-slate-100 dark:border-slate-800 text-sm text-slate-700 dark:text-slate-300 leading-relaxed space-y-4">
+              ${(d.body||'').split('\\n').filter(Boolean).map(p=>`<p>${p}</p>`).join('')}
+            </div>
+          </section>
+          <section>
+            <h4 class="text-[10px] font-extrabold text-slate-400 uppercase tracking-[0.2em] mb-3">Call to Action</h4>
+            <div class="p-4 bg-primary/10 rounded-lg border-l-4 border-primary italic text-sm text-slate-800 dark:text-slate-200">${d.cta || ''}</div>
+          </section>
+          <section>
+            <h4 class="text-[10px] font-extrabold text-slate-400 uppercase tracking-[0.2em] mb-3">Hashtags</h4>
+            <div class="flex flex-wrap gap-2">
+              ${(d.hashtags||[]).map(h=>`<span class="px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded text-[11px] font-semibold text-slate-500">${h}</span>`).join('')}
+            </div>
+          </section>
+          ${d.variations?.length ? `
+            <section>
+              <h4 class="text-[10px] font-extrabold text-slate-400 uppercase tracking-[0.2em] mb-3">Alt hooks</h4>
+              <div class="space-y-2">
+                ${d.variations.map((v,i)=>`<div class="text-sm text-slate-700 dark:text-slate-300"><span class="font-extrabold text-slate-900 dark:text-white">Alt ${i+1}:</span> ${v.hook}</div>`).join('')}
+              </div>
+            </section>` : ''}
+          ${d.best_time_to_post ? `
+            <section>
+              <h4 class="text-[10px] font-extrabold text-slate-400 uppercase tracking-[0.2em] mb-3">Best time to post</h4>
+              <div class="text-sm text-slate-700 dark:text-slate-300">${d.best_time_to_post}</div>
+            </section>` : ''}
+        </div>
+        <div class="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 flex justify-end gap-3">
+          <button class="px-6 py-2 text-sm font-extrabold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                  type="button"
+                  onclick="showToast('Draft saved locally (UI only)')">Save Draft</button>
+          <button class="px-6 py-2 bg-primary text-white text-sm font-extrabold rounded-lg hover:shadow-lg hover:shadow-primary/20 transition-all"
+                  type="button"
+                  onclick="showToast('Scheduling is not wired yet')">Schedule Post</button>
+        </div>
       </div>
-      ${d.variations?.length ? `<div class="result-section"><div class="result-label">Alt hooks</div>${d.variations.map((v,i)=>`<div class="result-text">Alt ${i+1}: ${v.hook}</div>`).join('')}</div>` : ''}
-      ${d.best_time_to_post ? `<div class="result-section"><div class="result-label">Best time to post</div><div class="result-text">${d.best_time_to_post}</div></div>` : ''}
-      <button class="copy-btn" onclick="copyText(${JSON.stringify(`${d.hook}\n\n${d.body||''}\n\n${d.cta}\n\n${(d.hashtags||[]).join(' ')}`)})">Copy full caption</button>`;
+    `;
   } catch (e) { box.innerHTML = `<div class="error-msg">${e.message}</div>`; }
 }
 
@@ -255,13 +562,57 @@ async function generateReelScript() {
       archetype: val('reel-archetype'),
     });
     box.innerHTML = `
-      <div class="result-section"><div class="result-label">Title</div><div class="result-text">${d.title||''}</div></div>
-      <div class="result-section"><div class="result-label">Script</div>
-        ${(d.script||[]).map(b=>`<div class="script-beat"><div class="script-time">${b.time}</div><div class="script-spoken">${b.spoken||''}</div>${b.action?`<div class="script-text">Action: ${b.action}</div>`:''}<div class="script-text">On screen: "${b.on_screen_text||''}"</div></div>`).join('')}
+      <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-xl shadow-primary/5 border border-primary/20 overflow-hidden mt-6">
+        <div class="p-4 bg-primary/5 border-b border-primary/10 flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="flex h-2 w-2 rounded-full bg-green-500 animate-pulse"></span>
+            <span class="text-xs font-extrabold text-primary uppercase tracking-wider">Script ready</span>
+          </div>
+          <button class="p-2 text-slate-500 hover:text-primary hover:bg-primary/10 rounded-lg transition-colors flex items-center gap-2 text-xs font-extrabold"
+                  title="Copy"
+                  onclick="copyText(${JSON.stringify((d.script||[]).map(b=>`${b.time} ${b.spoken||''} (On-screen: ${b.on_screen_text||''})${b.action?` [${b.action}]`:''}`).join('\\n'))})">
+            <span class="material-symbols-outlined text-[18px]">content_copy</span>
+            Copy
+          </button>
+        </div>
+        <div class="p-8 space-y-8">
+          <section>
+            <h4 class="text-[10px] font-extrabold text-slate-400 uppercase tracking-[0.2em] mb-3">Title</h4>
+            <p class="text-lg font-black text-slate-900 dark:text-white leading-tight">${d.title||''}</p>
+          </section>
+          <section>
+            <h4 class="text-[10px] font-extrabold text-slate-400 uppercase tracking-[0.2em] mb-3">Script</h4>
+            <div class="space-y-3">
+              ${(d.script||[]).map(b=>`
+                <div class="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800">
+                  <div class="text-[11px] font-extrabold text-primary mb-2">${b.time}</div>
+                  <div class="text-sm font-semibold text-slate-900 dark:text-white">${b.spoken||''}</div>
+                  ${b.action?`<div class="text-xs text-slate-500 dark:text-slate-400 mt-1">Action: ${b.action}</div>`:''}
+                  <div class="text-xs text-slate-500 dark:text-slate-400 mt-1">On-screen: “${b.on_screen_text||''}”</div>
+                </div>
+              `).join('')}
+            </div>
+          </section>
+          ${d.audio_suggestion?`
+            <section>
+              <h4 class="text-[10px] font-extrabold text-slate-400 uppercase tracking-[0.2em] mb-3">Audio</h4>
+              <div class="text-sm text-slate-700 dark:text-slate-300">${d.audio_suggestion}</div>
+            </section>`:''}
+          ${d.cta?`
+            <section>
+              <h4 class="text-[10px] font-extrabold text-slate-400 uppercase tracking-[0.2em] mb-3">CTA</h4>
+              <div class="p-4 bg-primary/10 rounded-lg border-l-4 border-primary italic text-sm text-slate-800 dark:text-slate-200">${d.cta}</div>
+            </section>`:''}
+          ${d.filming_tips?.length?`
+            <section>
+              <h4 class="text-[10px] font-extrabold text-slate-400 uppercase tracking-[0.2em] mb-3">Filming tips</h4>
+              <div class="space-y-1 text-sm text-slate-700 dark:text-slate-300">
+                ${d.filming_tips.map(t=>`<div>• ${t}</div>`).join('')}
+              </div>
+            </section>`:''}
+        </div>
       </div>
-      <div class="result-section"><div class="result-label">Audio</div><div class="result-text">${d.audio_suggestion||''}</div></div>
-      <div class="result-section"><div class="result-label">CTA</div><div class="result-text">${d.cta||''}</div></div>
-      ${d.filming_tips?.length?`<div class="result-section"><div class="result-label">Filming tips</div>${d.filming_tips.map(t=>`<div class="result-text">• ${t}</div>`).join('')}</div>`:''}`;
+    `;
   } catch (e) { box.innerHTML = `<div class="error-msg">${e.message}</div>`; }
 }
 
@@ -277,13 +628,52 @@ async function generateCarousel() {
       archetype:    val('car-archetype'),
     });
     box.innerHTML = `
-      <div class="result-section"><div class="result-label">Title</div><div class="result-text">${d.title||''}</div></div>
-      <div class="result-section"><div class="result-label">Slides</div>
-        ${(d.slides||[]).map(s=>`<div class="slide-card"><div class="slide-num">Slide ${s.number} — ${s.type||''}</div><div class="slide-headline">${s.headline||''}</div>${s.subtext?`<div class="slide-detail">${s.subtext}</div>`:''}<div class="slide-detail" style="color:var(--text-muted)">${s.visual_direction||''}</div></div>`).join('')}
+      <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-xl shadow-primary/5 border border-primary/20 overflow-hidden mt-6">
+        <div class="p-4 bg-primary/5 border-b border-primary/10 flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="flex h-2 w-2 rounded-full bg-green-500 animate-pulse"></span>
+            <span class="text-xs font-extrabold text-primary uppercase tracking-wider">Carousel ready</span>
+          </div>
+          <button class="p-2 text-slate-500 hover:text-primary hover:bg-primary/10 rounded-lg transition-colors flex items-center gap-2 text-xs font-extrabold"
+                  title="Copy caption"
+                  onclick="copyText(${JSON.stringify(d.caption||'')})">
+            <span class="material-symbols-outlined text-[18px]">content_copy</span>
+            Copy caption
+          </button>
+        </div>
+        <div class="p-8 space-y-8">
+          <section>
+            <h4 class="text-[10px] font-extrabold text-slate-400 uppercase tracking-[0.2em] mb-3">Title</h4>
+            <p class="text-lg font-black text-slate-900 dark:text-white leading-tight">${d.title||''}</p>
+          </section>
+          <section>
+            <h4 class="text-[10px] font-extrabold text-slate-400 uppercase tracking-[0.2em] mb-3">Slides</h4>
+            <div class="space-y-3">
+              ${(d.slides||[]).map(s=>`
+                <div class="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800">
+                  <div class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-2">Slide ${s.number}${s.type?` — ${s.type}`:''}</div>
+                  <div class="text-sm font-black text-slate-900 dark:text-white">${s.headline||''}</div>
+                  ${s.subtext?`<div class="text-sm text-slate-700 dark:text-slate-300 mt-1">${s.subtext}</div>`:''}
+                  ${s.visual_direction?`<div class="text-xs text-slate-500 dark:text-slate-400 mt-2">${s.visual_direction}</div>`:''}
+                </div>
+              `).join('')}
+            </div>
+          </section>
+          <section>
+            <h4 class="text-[10px] font-extrabold text-slate-400 uppercase tracking-[0.2em] mb-3">Caption</h4>
+            <div class="bg-slate-50 dark:bg-slate-800/50 p-6 rounded-xl border border-slate-100 dark:border-slate-800 text-sm text-slate-700 dark:text-slate-300 leading-relaxed space-y-2">
+              ${(d.caption||'').split('\\n').filter(Boolean).map(p=>`<p>${p}</p>`).join('')}
+            </div>
+          </section>
+          <section>
+            <h4 class="text-[10px] font-extrabold text-slate-400 uppercase tracking-[0.2em] mb-3">Hashtags</h4>
+            <div class="flex flex-wrap gap-2">
+              ${(d.hashtags||[]).map(h=>`<span class="px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded text-[11px] font-semibold text-slate-500">${h}</span>`).join('')}
+            </div>
+          </section>
+        </div>
       </div>
-      <div class="result-section"><div class="result-label">Caption</div><div class="result-text">${(d.caption||'').replace(/\n/g,'<br>')}</div></div>
-      <div class="hashtag-row">${(d.hashtags||[]).map(h=>`<span class="hashtag">${h}</span>`).join('')}</div>
-      <button class="copy-btn" onclick="copyText(${JSON.stringify(d.caption||'')})">Copy caption</button>`;
+    `;
   } catch (e) { box.innerHTML = `<div class="error-msg">${e.message}</div>`; }
 }
 
@@ -298,10 +688,39 @@ async function generateDM() {
       strategy:      val('dm-strategy'),
     });
     box.innerHTML = `
-      <div class="result-section"><div class="result-label">Message</div><div class="result-text">${(d.body||'').replace(/\n/g,'<br>')}</div></div>
-      ${d.follow_up?`<div class="result-section"><div class="result-label">5-day follow-up</div><div class="result-text">${d.follow_up}</div></div>`:''}
-      ${d.strategy_note?`<div class="result-section"><div class="result-label">Strategy note</div><div class="result-text" style="color:var(--text-secondary)">${d.strategy_note}</div></div>`:''}
-      <button class="copy-btn" onclick="copyText(${JSON.stringify(d.body||'')})">Copy DM</button>`;
+      <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-xl shadow-primary/5 border border-primary/20 overflow-hidden mt-6">
+        <div class="p-4 bg-primary/5 border-b border-primary/10 flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="flex h-2 w-2 rounded-full bg-green-500 animate-pulse"></span>
+            <span class="text-xs font-extrabold text-primary uppercase tracking-wider">DM ready</span>
+          </div>
+          <button class="p-2 text-slate-500 hover:text-primary hover:bg-primary/10 rounded-lg transition-colors flex items-center gap-2 text-xs font-extrabold"
+                  title="Copy DM"
+                  onclick="copyText(${JSON.stringify(d.body||'')})">
+            <span class="material-symbols-outlined text-[18px]">content_copy</span>
+            Copy
+          </button>
+        </div>
+        <div class="p-8 space-y-6">
+          <section>
+            <h4 class="text-[10px] font-extrabold text-slate-400 uppercase tracking-[0.2em] mb-3">Message</h4>
+            <div class="bg-slate-50 dark:bg-slate-800/50 p-6 rounded-xl border border-slate-100 dark:border-slate-800 text-sm text-slate-700 dark:text-slate-300 leading-relaxed space-y-2">
+              ${(d.body||'').split('\\n').filter(Boolean).map(p=>`<p>${p}</p>`).join('')}
+            </div>
+          </section>
+          ${d.follow_up?`
+            <section>
+              <h4 class="text-[10px] font-extrabold text-slate-400 uppercase tracking-[0.2em] mb-3">5-day follow-up</h4>
+              <div class="text-sm text-slate-700 dark:text-slate-300">${d.follow_up}</div>
+            </section>`:''}
+          ${d.strategy_note?`
+            <section>
+              <h4 class="text-[10px] font-extrabold text-slate-400 uppercase tracking-[0.2em] mb-3">Strategy note</h4>
+              <div class="text-sm text-slate-500 dark:text-slate-400">${d.strategy_note}</div>
+            </section>`:''}
+        </div>
+      </div>
+    `;
   } catch (e) { box.innerHTML = `<div class="error-msg">${e.message}</div>`; }
 }
 
@@ -317,17 +736,29 @@ async function loadCalendar() {
       grid.innerHTML = `<div class="info-msg">No calendar slots yet. Click "Generate month" to create your content plan.</div>`;
       return;
     }
+    function statusBadge(status) {
+      const st = (status || 'draft').toLowerCase();
+      const map = {
+        draft: 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400 border-amber-100 dark:border-amber-800/40',
+        approved: 'bg-primary/10 text-primary dark:bg-primary/15 dark:text-primary border-primary/10 dark:border-primary/25',
+        posted: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400 border-emerald-100 dark:border-emerald-800/40',
+      };
+      return map[st] || map.draft;
+    }
     grid.innerHTML = slots.map(s => `
-      <div class="slot-card">
-        <div class="slot-date">${s.date} — ${s.day||''}</div>
-        <div class="slot-topic">${s.topic||'Untitled'}</div>
-        <div class="slot-meta">
-          <span class="slot-tag">${s.format||''}</span>
-          <span class="slot-tag">${s.archetype_label||s.archetype||''}</span>
-          <span class="slot-tag">${s.pillar||''}</span>
-          <span class="slot-status ${s.status||'draft'}">${s.status||'draft'}</span>
+      <div class="bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
+        <div class="flex items-center justify-between mb-2">
+          <div class="text-[11px] text-slate-400 font-extrabold uppercase tracking-widest">${s.date} ${s.day?`• ${s.day}`:''}</div>
+          <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-extrabold uppercase tracking-wider border ${statusBadge(s.status)}">${(s.status||'draft')}</span>
         </div>
-      </div>`).join('');
+        <div class="text-sm font-black text-slate-900 dark:text-white leading-snug">${s.topic||'Untitled'}</div>
+        <div class="mt-3 flex flex-wrap gap-2">
+          ${s.format?`<span class="px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded text-[11px] font-semibold text-slate-500">${s.format}</span>`:''}
+          ${(s.archetype_label||s.archetype)?`<span class="px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded text-[11px] font-semibold text-slate-500">${s.archetype_label||s.archetype}</span>`:''}
+          ${s.pillar?`<span class="px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded text-[11px] font-semibold text-slate-500">${s.pillar}</span>`:''}
+        </div>
+      </div>
+    `).join('');
   } catch (e) {
     grid.innerHTML = `<div class="error-msg">${e.message}</div>`;
   }
@@ -364,19 +795,43 @@ async function loadComments() {
     const badge = el('pending-badge');
     badge.textContent   = items.length;
     badge.style.display = items.length > 0 ? 'inline-flex' : 'none';
-    if (!items.length) { list.innerHTML = '<div class="success-msg">All comments answered — great work!</div>'; return; }
-    list.innerHTML = items.map(c => `
-      <div class="comment-card">
-        <div class="comment-thumb">${c.post_thumbnail?`<img src="${c.post_thumbnail}" alt="">`:''}</div>
-        <div class="comment-content">
-          <div class="comment-header">
-            <span class="comment-username">${c.username||'Unknown'}</span>
-            <span class="comment-age ${c.hours_unanswered>6?'urgent':''}">${c.hours_unanswered}h ago</span>
+    if (!items.length) {
+      list.innerHTML = `
+        <div class="py-20 flex flex-col items-center text-center">
+          <div class="size-24 rounded-full bg-slate-100 dark:bg-slate-800/50 flex items-center justify-center mb-6 border border-slate-200 dark:border-slate-800">
+            <span class="material-symbols-outlined text-4xl text-slate-300 dark:text-slate-600">auto_awesome</span>
           </div>
-          <div class="comment-text">${c.text||''}</div>
-          <button class="copy-btn" onclick='openReplyModal(${JSON.stringify(c)})'>Reply</button>
+          <h3 class="text-lg font-black text-slate-900 dark:text-slate-100">All caught up!</h3>
+          <p class="text-sm text-slate-500 max-w-[320px] mx-auto mt-2">No more comments to moderate at the moment. Check back later.</p>
+        </div>`;
+      return;
+    }
+    list.innerHTML = items.map(c => `
+      <div class="bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm">
+        <div class="p-6">
+          <div class="flex items-start justify-between mb-4 gap-4">
+            <div class="flex items-center gap-3 min-w-0">
+              <div class="size-10 rounded-full border border-slate-100 dark:border-slate-800 bg-slate-200 dark:bg-slate-700 overflow-hidden flex-shrink-0">
+                ${c.post_thumbnail?`<img src="${c.post_thumbnail}" alt="" class="w-full h-full object-cover">`:''}
+              </div>
+              <div class="min-w-0">
+                <h3 class="text-sm font-black truncate">${c.username||'Unknown'}</h3>
+                <p class="text-xs text-slate-500">${c.hours_unanswered}h ago</p>
+              </div>
+            </div>
+            ${c.hours_unanswered>6
+              ? `<span class="px-2 py-0.5 rounded text-[10px] font-extrabold bg-red-50 text-red-600 dark:bg-red-900/20 uppercase tracking-wider">Urgent</span>`
+              : `<span class="px-2 py-0.5 rounded text-[10px] font-extrabold bg-slate-100 text-slate-500 dark:bg-slate-800 uppercase tracking-wider">Pending</span>`
+            }
+          </div>
+          <p class="text-sm text-slate-700 dark:text-slate-300 leading-relaxed mb-6">${c.text||''}</p>
+          <div class="flex items-center justify-end">
+            <button class="px-6 py-2 bg-primary text-white text-xs font-extrabold rounded-lg hover:shadow-lg hover:shadow-primary/30 transition-all"
+                    onclick='openReplyModal(${JSON.stringify(c)})'>Reply</button>
+          </div>
         </div>
-      </div>`).join('');
+      </div>
+    `).join('');
   } catch (e) { list.innerHTML = `<div class="error-msg">${e.message}</div>`; }
 }
 
@@ -425,19 +880,38 @@ async function loadKPI() {
     }
     const latest = weeks[0];
     el('kpi-summary').innerHTML = `
-      <div class="metric-card"><div class="metric-label">Followers</div><div class="metric-value">${fmt(latest.followers)}</div></div>
-      <div class="metric-card"><div class="metric-label">Avg engagement</div><div class="metric-value">${(latest.avg_eng_rate||0).toFixed(1)}%</div></div>
-      <div class="metric-card"><div class="metric-label">Avg reach</div><div class="metric-value">${fmt(latest.avg_reach)}</div></div>
-      <div class="metric-card"><div class="metric-label">Posts this week</div><div class="metric-value">${latest.posts_published||0}</div></div>`;
+      <div class="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-slate-200/70 dark:border-slate-800">
+        <p class="text-slate-500 dark:text-slate-400 text-xs font-extrabold uppercase tracking-widest">Followers</p>
+        <div class="mt-2 text-3xl font-black tracking-tight">${fmt(latest.followers)}</div>
+      </div>
+      <div class="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-slate-200/70 dark:border-slate-800">
+        <p class="text-slate-500 dark:text-slate-400 text-xs font-extrabold uppercase tracking-widest">Avg engagement</p>
+        <div class="mt-2 text-3xl font-black tracking-tight">${(latest.avg_eng_rate||0).toFixed(1)}%</div>
+      </div>
+      <div class="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-slate-200/70 dark:border-slate-800">
+        <p class="text-slate-500 dark:text-slate-400 text-xs font-extrabold uppercase tracking-widest">Avg reach</p>
+        <div class="mt-2 text-3xl font-black tracking-tight">${fmt(latest.avg_reach)}</div>
+      </div>
+      <div class="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-slate-200/70 dark:border-slate-800">
+        <p class="text-slate-500 dark:text-slate-400 text-xs font-extrabold uppercase tracking-widest">Posts this week</p>
+        <div class="mt-2 text-3xl font-black tracking-tight">${latest.posts_published||0}</div>
+      </div>
+    `;
     trend.innerHTML = weeks.map(w => `
-      <div class="kpi-week-row">
-        <div class="kpi-week-label">${w.week_start||'—'}</div>
-        <div class="kpi-cell"><div class="kpi-cell-label">Followers</div>${fmt(w.followers)}</div>
-        <div class="kpi-cell"><div class="kpi-cell-label">Eng rate</div>${(w.avg_eng_rate||0).toFixed(1)}%</div>
-        <div class="kpi-cell"><div class="kpi-cell-label">Avg reach</div>${fmt(w.avg_reach)}</div>
-        <div class="kpi-cell"><div class="kpi-cell-label">Saves</div>${fmt(w.total_saves)}</div>
-        <div class="kpi-cell"><div class="kpi-cell-label">Top format</div>${w.top_format||'—'}</div>
-      </div>`).join('');
+      <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200/70 dark:border-slate-800 overflow-hidden shadow-sm">
+        <div class="px-6 py-4 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+          <div class="text-sm font-black">${w.week_start||'—'}</div>
+          <div class="text-xs text-slate-400 font-extrabold uppercase tracking-widest">Weekly snapshot</div>
+        </div>
+        <div class="p-6 grid grid-cols-2 md:grid-cols-6 gap-4">
+          <div><div class="text-[10px] text-slate-400 uppercase font-extrabold tracking-widest mb-1">Followers</div><div class="text-sm font-black">${fmt(w.followers)}</div></div>
+          <div><div class="text-[10px] text-slate-400 uppercase font-extrabold tracking-widest mb-1">Eng rate</div><div class="text-sm font-black">${(w.avg_eng_rate||0).toFixed(1)}%</div></div>
+          <div><div class="text-[10px] text-slate-400 uppercase font-extrabold tracking-widest mb-1">Avg reach</div><div class="text-sm font-black">${fmt(w.avg_reach)}</div></div>
+          <div><div class="text-[10px] text-slate-400 uppercase font-extrabold tracking-widest mb-1">Saves</div><div class="text-sm font-black">${fmt(w.total_saves)}</div></div>
+          <div class="md:col-span-2"><div class="text-[10px] text-slate-400 uppercase font-extrabold tracking-widest mb-1">Top format</div><div class="text-sm font-black">${w.top_format||'—'}</div></div>
+        </div>
+      </div>
+    `).join('');
   } catch (e) { trend.innerHTML = `<div class="error-msg">${e.message}</div>`; }
 }
 
@@ -456,9 +930,30 @@ async function generateReport() {
       include_next_week_plan: true,
     });
     box.innerHTML = `
-      <div class="result-section"><div class="result-label">Summary</div><div class="result-text">${d.headline_summary||''}</div></div>
-      <div class="result-section"><div class="result-label">Full report</div><div class="result-text" style="white-space:pre-wrap">${d.report_text||''}</div></div>
-      <button class="copy-btn" onclick="copyText(${JSON.stringify(d.report_text||'')})">Copy report</button>`;
+      <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-xl shadow-primary/5 border border-primary/20 overflow-hidden">
+        <div class="p-4 bg-primary/5 border-b border-primary/10 flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="flex h-2 w-2 rounded-full bg-green-500 animate-pulse"></span>
+            <span class="text-xs font-extrabold text-primary uppercase tracking-wider">Report ready</span>
+          </div>
+          <button class="p-2 text-slate-500 hover:text-primary hover:bg-primary/10 rounded-lg transition-colors flex items-center gap-2 text-xs font-extrabold"
+                  onclick="copyText(${JSON.stringify(d.report_text||'')})">
+            <span class="material-symbols-outlined text-[18px]">content_copy</span>
+            Copy
+          </button>
+        </div>
+        <div class="p-8 space-y-8">
+          <section>
+            <h4 class="text-[10px] font-extrabold text-slate-400 uppercase tracking-[0.2em] mb-3">Summary</h4>
+            <div class="text-sm text-slate-700 dark:text-slate-300">${d.headline_summary||''}</div>
+          </section>
+          <section>
+            <h4 class="text-[10px] font-extrabold text-slate-400 uppercase tracking-[0.2em] mb-3">Full report</h4>
+            <div class="bg-slate-50 dark:bg-slate-800/50 p-6 rounded-xl border border-slate-100 dark:border-slate-800 text-sm text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">${d.report_text||''}</div>
+          </section>
+        </div>
+      </div>
+    `;
   } catch (e) { box.innerHTML = `<div class="error-msg">${e.message}</div>`; }
 }
 
@@ -468,14 +963,28 @@ async function loadJobs() {
   list.innerHTML = '<div class="loading">Loading scheduled jobs…</div>';
   try {
     const data = await API.get('/scheduler/jobs');
+    function badge(status) {
+      const st = (status||'paused').toLowerCase();
+      if (st === 'active') return 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border-emerald-100 dark:border-emerald-800/40';
+      if (st === 'paused') return 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border-slate-200 dark:border-slate-700';
+      return 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400 border-amber-100 dark:border-amber-800/40';
+    }
     list.innerHTML = (data.jobs||[]).map(j => `
-      <div class="job-row">
-        <div class="job-id">${j.id}</div>
-        <div class="job-schedule">${j.schedule}</div>
-        <div class="job-next">Next: ${j.next_run?j.next_run.replace('T',' ').slice(0,16):'—'}</div>
-        <span class="job-badge ${j.status}">${j.status}</span>
-        <button class="copy-btn" onclick="triggerJob('${j.id}')">Run now</button>
-      </div>`).join('');
+      <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200/70 dark:border-slate-800 shadow-sm p-6 flex flex-col md:flex-row md:items-center gap-4">
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-2 flex-wrap">
+            <div class="text-sm font-black truncate">${j.id}</div>
+            <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-extrabold uppercase tracking-wider border ${badge(j.status)}">${j.status}</span>
+          </div>
+          <div class="mt-2 text-sm text-slate-600 dark:text-slate-400">${j.schedule}</div>
+          <div class="mt-1 text-xs text-slate-400">Next: ${j.next_run?j.next_run.replace('T',' ').slice(0,16):'—'}</div>
+        </div>
+        <button class="px-5 py-2.5 bg-primary text-white rounded-lg text-xs font-extrabold shadow-lg shadow-primary/20 hover:bg-primary/90 transition-colors"
+                onclick="triggerJob('${j.id}')">
+          Run now
+        </button>
+      </div>
+    `).join('');
   } catch (e) { list.innerHTML = `<div class="error-msg">${e.message}</div>`; }
 }
 
@@ -496,18 +1005,28 @@ async function loadAccounts() {
       return;
     }
     list.innerHTML = items.map(a => `
-      <div class="settings-section" style="margin-bottom:10px;cursor:pointer" onclick="activateAccount('${a.id}')">
-        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <div class="account-avatar" style="width:36px;height:36px;font-size:13px">${a.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase()}</div>
-          <div style="flex:1">
-            <div style="font-size:14px;font-weight:500">${a.name} ${a.is_active?'<span class="slot-status approved" style="font-size:10px;margin-left:4px">active</span>':''}</div>
-            <div style="font-size:12px;color:var(--text-secondary)">${a.handle||'No handle'} · ${a.niche_id||'No niche'} · ${a.account_type==='A'?'Brand new':'Existing'}</div>
+      <div class="bg-white dark:bg-slate-900 rounded-2xl border ${a.is_active?'border-primary/30':'border-slate-200/70 dark:border-slate-800'} shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+           onclick="activateAccount('${a.id}')">
+        <div class="p-6 flex items-center gap-4 flex-wrap">
+          <div class="size-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-black">
+            ${a.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase()}
           </div>
-          <button class="btn-secondary" style="font-size:11px;padding:4px 10px" onclick="event.stopPropagation();activateAccount('${a.id}')">
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2">
+              <div class="text-base font-black truncate">${a.name}</div>
+              ${a.is_active?'<span class="px-2 py-0.5 rounded text-[10px] font-extrabold bg-primary/10 text-primary uppercase tracking-wider">active</span>':''}
+            </div>
+            <div class="text-sm text-slate-500 dark:text-slate-400 truncate">
+              ${a.handle||'No handle'} · ${a.niche_id||'No niche'} · ${a.account_type==='A'?'Brand new':'Existing'}
+            </div>
+          </div>
+          <button class="px-5 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-extrabold border border-slate-200 dark:border-slate-700"
+                  onclick="event.stopPropagation();activateAccount('${a.id}')">
             ${a.is_active ? 'Active' : 'Switch to'}
           </button>
         </div>
-      </div>`).join('');
+      </div>
+    `).join('');
   } catch (e) { list.innerHTML = `<div class="error-msg">${e.message}</div>`; }
 }
 
@@ -556,18 +1075,19 @@ async function loadNiches() {
     const data   = await API.get('/niches');
     const niches = data.niches || [];
     list.innerHTML = niches.map(n => `
-      <div class="settings-section" style="margin-bottom:10px">
-        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap">
-          <div>
-            <div style="font-size:14px;font-weight:500;margin-bottom:3px">${n.name}</div>
-            <div style="font-size:12px;color:var(--text-secondary);margin-bottom:6px">${n.description}</div>
-            <div style="display:flex;flex-wrap:wrap;gap:5px">
-              ${(n.pillars||[]).map(p=>`<span class="slot-tag">${p}</span>`).join('')}
+      <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/70 dark:border-slate-800 shadow-sm p-6">
+        <div class="flex items-start justify-between gap-4 flex-wrap">
+          <div class="min-w-0">
+            <div class="text-base font-black truncate">${n.name}</div>
+            <div class="text-sm text-slate-500 dark:text-slate-400 mt-1">${n.description||''}</div>
+            <div class="mt-4 flex flex-wrap gap-2">
+              ${(n.pillars||[]).map(p=>`<span class="px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded text-[11px] font-semibold text-slate-500">${p}</span>`).join('')}
             </div>
           </div>
-          <span style="font-family:var(--font-mono);font-size:10px;color:var(--text-muted);padding-top:2px">${n.id}</span>
+          <span class="text-[10px] font-mono text-slate-400">${n.id}</span>
         </div>
-      </div>`).join('');
+      </div>
+    `).join('');
   } catch (e) { list.innerHTML = `<div class="error-msg">${e.message}</div>`; }
 }
 
@@ -588,20 +1108,36 @@ async function generateNicheProfile() {
     _generatedProfile = d.profile;
     const p = d.profile;
     box.innerHTML = `
-      <div class="result-section"><div class="result-label">Profile generated</div>
-        <div class="result-text"><strong>${p.name}</strong> — ${p.description}</div>
-      </div>
-      <div class="result-section"><div class="result-label">Vocabulary map</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:4px">
-          ${Object.entries(p.vocabulary||{}).map(([k,v])=>`<div style="font-size:12px"><span style="color:var(--text-muted)">${k}:</span> ${v}</div>`).join('')}
+      <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200/70 dark:border-slate-800 overflow-hidden">
+        <div class="p-4 bg-primary/5 border-b border-primary/10 flex items-center gap-2">
+          <span class="material-symbols-outlined text-primary text-[20px]">auto_awesome</span>
+          <span class="text-xs font-extrabold text-primary uppercase tracking-wider">Profile generated</span>
+        </div>
+        <div class="p-6 space-y-6">
+          <div class="text-sm text-slate-700 dark:text-slate-300">
+            <span class="font-black text-slate-900 dark:text-white">${p.name}</span> — ${p.description}
+          </div>
+          <div>
+            <h4 class="text-[10px] font-extrabold text-slate-400 uppercase tracking-[0.2em] mb-3">Vocabulary map</h4>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              ${Object.entries(p.vocabulary||{}).map(([k,v])=>`<div class="text-xs"><span class="text-slate-400 font-extrabold">${k}:</span> <span class="text-slate-700 dark:text-slate-300">${v}</span></div>`).join('')}
+            </div>
+          </div>
+          <div>
+            <h4 class="text-[10px] font-extrabold text-slate-400 uppercase tracking-[0.2em] mb-3">Content pillars</h4>
+            <div class="flex flex-wrap gap-2">
+              ${(p.content_pillars_preset||[]).map(x=>`<span class="px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded text-[11px] font-semibold text-slate-500">${x}</span>`).join('')}
+            </div>
+          </div>
+          <div>
+            <h4 class="text-[10px] font-extrabold text-slate-400 uppercase tracking-[0.2em] mb-3">Hashtags (niche)</h4>
+            <div class="flex flex-wrap gap-2">
+              ${(p.hashtags?.niche||[]).map(h=>`<span class="px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded text-[11px] font-semibold text-slate-500">${h}</span>`).join('')}
+            </div>
+          </div>
         </div>
       </div>
-      <div class="result-section"><div class="result-label">Content pillars</div>
-        <div class="hashtag-row">${(p.content_pillars_preset||[]).map(x=>`<span class="hashtag">${x}</span>`).join('')}</div>
-      </div>
-      <div class="result-section"><div class="result-label">Hashtags (niche)</div>
-        <div class="hashtag-row">${(p.hashtags?.niche||[]).map(h=>`<span class="hashtag">${h}</span>`).join('')}</div>
-      </div>`;
+    `;
     show('ob-save-section');
   } catch (e) { box.innerHTML = `<div class="error-msg">${e.message}</div>`; }
 }
@@ -644,10 +1180,16 @@ async function loadChecklist() {
     { label: 'Cerebras API key configured',           done: true },
   ];
   wrap.innerHTML = checks.map(c => `
-    <div class="check-item">
-      <div class="check-icon ${c.done?'done':'todo'}">${c.done?'✓':'!'}</div>
-      <span style="color:${c.done?'var(--text-primary)':'var(--text-secondary)'}">${c.label}</span>
-    </div>`).join('');
+    <div class="flex items-center justify-between p-3 rounded-xl ${c.done?'bg-emerald-50/40 dark:bg-emerald-500/[0.03]':'hover:bg-slate-50 dark:hover:bg-slate-800/40'} transition-colors">
+      <div class="flex items-center gap-3">
+        <div class="size-6 rounded-full ${c.done?'bg-emerald-500 text-white':'bg-amber-100 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 border border-amber-200/50 dark:border-amber-800/30'} flex items-center justify-center text-[12px] font-black">
+          ${c.done?'✓':'!'}
+        </div>
+        <span class="text-[13px] font-semibold ${c.done?'text-slate-700 dark:text-slate-300':'text-slate-600 dark:text-slate-400'}">${c.label}</span>
+      </div>
+      <span class="text-[10px] font-extrabold uppercase tracking-wider ${c.done?'text-emerald-600 dark:text-emerald-400':'text-slate-400'}">${c.done?'Done':'Todo'}</span>
+    </div>
+  `).join('');
 }
 
 /* ── AI Provider & Model selector ───────────────────────── */
@@ -683,23 +1225,17 @@ function renderProviderCards() {
   if (!_providers.length) { container.innerHTML = ''; return; }
 
   container.innerHTML = _providers.map(p => `
-    <div
+    <button
+      type="button"
       onclick="selectProvider('${p.id}')"
-      style="
-        background: var(--color-background-primary);
-        border: ${p.id === _selectedProv ? '2px solid var(--accent)' : '0.5px solid var(--color-border-secondary)'};
-        border-radius: var(--border-radius-lg);
-        padding: 12px 14px;
-        cursor: pointer;
-        transition: border-color .12s;
-      ">
-      <div style="font-size:13px;font-weight:500;margin-bottom:3px">${p.label}</div>
-      <div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:6px">${(p.models||[]).length} model${(p.models||[]).length>1?'s':''} available</div>
+      class="text-left bg-white dark:bg-slate-900 border ${p.id === _selectedProv ? 'border-primary ring-2 ring-primary/10' : 'border-slate-200/70 dark:border-slate-800'} rounded-xl p-4 hover:border-primary/40 transition-colors">
+      <div class="text-sm font-black mb-1">${p.label}</div>
+      <div class="text-xs text-slate-500 dark:text-slate-400 mb-3">${(p.models||[]).length} model${(p.models||[]).length>1?'s':''} available</div>
       ${p.free_tier
-        ? '<span style="font-size:10px;background:var(--color-background-success);color:var(--color-text-success);padding:2px 8px;border-radius:8px;font-weight:500">Free tier</span>'
-        : `<a href="${p.key_link}" target="_blank" style="font-size:10px;color:var(--color-text-info)">Get API key →</a>`
+        ? '<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-extrabold bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800/40 uppercase tracking-wider">Free tier</span>'
+        : `<a href="${p.key_link}" target="_blank" class="text-[11px] font-extrabold text-primary hover:underline">Get API key →</a>`
       }
-    </div>
+    </button>
   `).join('');
 }
 
@@ -788,4 +1324,49 @@ async function saveProvider() {
   await populateAccountNicheSelect();
   await loadProviderSettings();
   loadOverview();
+
+  // Sidebar collapse toggle (persisted)
+  const sidebar = el('sidebar');
+  const sbBtn = el('sidebar-toggle');
+  const sbIcon = el('sidebar-toggle-icon');
+  function applySidebarCollapsed(collapsed) {
+    if (!sidebar) return;
+    sidebar.classList.toggle('collapsed', collapsed);
+    if (sbBtn) {
+      sbBtn.setAttribute('aria-pressed', collapsed ? 'true' : 'false');
+      sbBtn.setAttribute('aria-label', collapsed ? 'Expand sidebar' : 'Collapse sidebar');
+      sbBtn.setAttribute('title', collapsed ? 'Expand sidebar' : 'Collapse sidebar');
+    }
+    if (sbIcon) sbIcon.textContent = collapsed ? 'left_panel_open' : 'left_panel_close';
+  }
+  try {
+    const collapsed = localStorage.getItem('sidebarCollapsed') === '1';
+    applySidebarCollapsed(collapsed);
+  } catch {}
+  if (sbBtn && sidebar) {
+    sbBtn.addEventListener('click', () => {
+      const next = !sidebar.classList.contains('collapsed');
+      applySidebarCollapsed(next);
+      try { localStorage.setItem('sidebarCollapsed', next ? '1' : '0'); } catch {}
+    });
+  }
+
+  // Theme toggle (persisted)
+  const btn = el('theme-toggle');
+  const icon = el('theme-toggle-icon');
+  function applyTheme(next) {
+    try { localStorage.setItem('theme', next); } catch {}
+    const prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+    const shouldDark = next === 'dark' || (next === 'system' && prefersDark);
+    document.documentElement.classList.toggle('dark', shouldDark);
+    if (icon) icon.textContent = document.documentElement.classList.contains('dark') ? 'light_mode' : 'dark_mode';
+  }
+  if (btn) {
+    const current = (() => { try { return localStorage.getItem('theme') || 'system'; } catch { return 'system'; } })();
+    applyTheme(current);
+    btn.addEventListener('click', () => {
+      const nowDark = document.documentElement.classList.contains('dark');
+      applyTheme(nowDark ? 'light' : 'dark');
+    });
+  }
 })();
